@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  flask_app:
+    build:
+      context: ./flask_app
+      dockerfile: Dockerfile
+    container_name: flask_app
+    restart: unless-stopped
+    volumes:
+      - ./flask_app/api_keys.json:/app/api_keys.json:ro
+    environment:
+      - NEWZNAB_SERVER_URL=${NEWZNAB_SERVER_URL}
+      - API_KEYS_FILE=/app/api_keys.json
+      - DD_AGENT_HOST=datadog-agent
+      - DD_DOGSTATSD_PORT=8125
+    networks:
+      - app-network
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - flask_app
+    volumes:
+      - ./nginx/ssl/certs:/etc/ssl/certs:ro
+      - ./nginx/ssl/private:/etc/ssl/private:ro
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
