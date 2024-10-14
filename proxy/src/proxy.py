@@ -142,7 +142,10 @@ def proxy(indexer_name):
             return Response("API key is required.", status=400)
 
         upstream_start_time = time.time()
-
+        app.logger.debug(f"Client API Key: {client_apikey}")
+        app.logger.debug(f"Indexer Name: {indexer_name}")
+        app.logger.debug(f"Actual API Key Retrieved: {bool(actual_apikey)}")
+        app.logger.debug(f"Connecting to {usenet_server_url}/api")
         try:
             response = requests.get(f"{usenet_server_url}/api", params=validated_params, timeout=10)
         except requests.exceptions.Timeout:
