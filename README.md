@@ -11,6 +11,13 @@ mv mykey.key ./nginx/ssl/private/origin.key
 chmod 600 ./nginx/ssl/private/origin.key
 ```
 
+Generate 2 configuration files:
+
+`user_keys.json` should contain a unique 32 bit hex api key for each user, and a map of their indexer api keys. See [the example](/examples/user_keys.json)
+
+`indexer_configs.json` should contain a map of indexer name used in the query path to its url.
+
+
 ## Cloudflare support
 
 Cloudflare is enabled by default to front requests to the proxy app. You'll need to setup an account and cloudflare zero trust publisher to forward traffic through to nginx (and along to the proxy). 

@@ -1,0 +1,11 @@
+{
+    "abcdef1234567890abcdef1234567890": {
+      "indexer1": "actual_api_key_for_indexer1_client1",
+      "indexer2": "actual_api_key_for_indexer2_client1"
+    },
+    "1234567890abcdef1234567890abcdef": {
+      "indexer1": "actual_api_key_for_indexer1_client2",
+      "indexer2": "actual_api_key_for_indexer2_client2"
+    }
+  }
+  

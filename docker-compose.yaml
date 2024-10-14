@@ -8,7 +8,8 @@ services:
     container_name: flask_app
     restart: unless-stopped
     volumes:
-      - ./flask_app/api_keys.json:/app/api_keys.json:ro
+      - ./flask_app/api_keys.json:/config/api_keys.json:ro
+      - ./flask_app/indexer_config.json:/config/indexer_config.json:ro
     environment:
       - NEWZNAB_SERVER_URL=${NEWZNAB_SERVER_URL}
       - API_KEYS_FILE=/app/api_keys.json
