@@ -11,6 +11,22 @@ from datadog import initialize, statsd
 
 app = Flask(__name__)
 
+app.logger.setLevel(logging.DEBUG)
+
+# Create a handler to output logs to stderr
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+
+# Create a formatter and set it for the handler
+formatter = logging.Formatter(
+    '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+)
+handler.setFormatter(formatter)
+
+# Add the handler to the app's logger
+if not app.logger.handlers:
+    app.logger.addHandler(handler)
+
 options = {
     'statsd_host': os.environ.get('DD_AGENT_HOST', 'localhost'),
     'statsd_port': int(os.environ.get('DD_DOGSTATSD_PORT', 8125)),
@@ -122,14 +138,13 @@ def proxy(indexer_name):
         # API key validation and substitution
         client_apikey = validated_params.get('apikey')
         if client_apikey:
-            hashed_api_key = hashlib.sha256(client_apikey.encode()).hexdigest()
             statsd.increment('newznab_proxy.request.per_api_key', tags=[f'client_apikey:{hashed_api_key}', f'indexer:{indexer_name}'])
             if client_apikey not in client_api_key_map:
                 statsd.increment('newznab_proxy.invalid_client_api_key', tags=[f'indexer:{indexer_name}'])
                 return Response("Invalid API key.", status=403)
             client_keys = client_api_key_map.get(client_apikey)
             if client_keys:
-                actual_apikey = client_keys.get(indexer_name)
+                indexer_key = client_keys.get(indexer_name)
                 if actual_apikey:
                     validated_params['apikey'] = actual_apikey
                 else:
