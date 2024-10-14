@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   flask_app:
-    build:
-      context: ./flask_app
-      dockerfile: Dockerfile
+    image: ghcr.io/ramseymcgrath/forwardarr:latest
     container_name: flask_app
     restart: unless-stopped
     volumes:
