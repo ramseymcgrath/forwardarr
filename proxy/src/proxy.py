@@ -193,4 +193,4 @@ def proxy(indexer_name):
         return Response("Internal server error.", status=500)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=6060)
+    app.run(host='0.0.0.0', port=8080)
