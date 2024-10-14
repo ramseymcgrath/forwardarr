@@ -10,7 +10,7 @@ COPY ./proxy/src/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 RUN mkdir -p /config
 COPY ./proxy/src/proxy.py /app/proxy.py
-EXPOSE 6060
+EXPOSE 8080
 ENV INDEXER_URLS_JSON=/config/indexer_urls.json
 ENV API_KEYS_FILE=/config/api_keys.json
 ENV DD_AGENT_HOST=localhost
