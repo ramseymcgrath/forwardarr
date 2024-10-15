@@ -55,6 +55,7 @@ allowed_params = {
 
 # Regular expressions for parameter validation
 regex_patterns = {
+    'apikey': r'^[A-Fa-f0-9]{24}$'
     'imdbid': r'^tt\d{7,8}$',
     'o': r'^(json|xml)$',
 }
@@ -178,9 +179,13 @@ def proxy(indexer_name):
         indexer_query = validated_params.copy()
         try:
             if api_key_params != "apikey":
+                # remove the api key from the query if we are using a different param
                 indexer_query.remove('apikey')
+                # add the other api key to the query
                 indexer_query.append({usenet_api_param: indexer_key})
+            # make the request
             response = requests.get(f"{usenet_server_url}/api", params=indexer_query, timeout=10)
+        # handle the different exceptions
         except requests.exceptions.Timeout:
             statsd.increment('newznab_proxy.upstream.timeout', tags=[f'indexer:{indexer_name}'])
             app.logger.error(f"Timeout when contacting indexer '{indexer_name}'.")
@@ -207,7 +212,6 @@ def proxy(indexer_name):
         SLOW_REQUEST_THRESHOLD = 2  # seconds
         if duration > SLOW_REQUEST_THRESHOLD:
             statsd.increment('newznab_proxy.slow_request', tags=[f'indexer:{indexer_name}'])
-
         if 400 <= response.status_code < 500:
             statsd.increment('newznab_proxy.client_error', tags=[f'status_code:{response.status_code}', f'indexer:{indexer_name}'])
         elif 500 <= response.status_code < 600:
