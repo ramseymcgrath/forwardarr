@@ -12,21 +12,15 @@ from datadog import initialize, statsd
 
 app = Flask(__name__)
 
-app.logger.setLevel(logging.DEBUG)
-
-# Create a handler to output logs to stderr
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
-
-# Create a formatter and set it for the handler
-formatter = logging.Formatter(
-    '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+    handlers=[logging.StreamHandler()]
 )
-handler.setFormatter(formatter)
 
-# Add the handler to the app's logger
-if not app.logger.handlers:
-    app.logger.addHandler(handler)
+# Optionally, set the Flask app logger level
+app.logger.setLevel(logging.DEBUG)
 
 options = {
     'statsd_host': os.environ.get('DD_AGENT_HOST', 'localhost'),
@@ -107,9 +101,7 @@ def proxy(indexer_name):
         return Response(f"Indexer '{indexer_name}' not found.", status=404)
 
     usenet_server_url = indexer_name_map[indexer_name]['url']
-
-    # Different indexers use different API key parameters
-    usenet_api_param = indexer_name_map[indexer_name]['api_param']
+    usenet_api_param = indexer_name_map[indexer_name].get('api_param', 'apikey')
 
     try:
         params = request.args.to_dict(flat=False)
@@ -145,45 +137,38 @@ def proxy(indexer_name):
         # API key validation and substitution
         client_apikey = validated_params.get('apikey')
         if client_apikey:
-            statsd.increment('newznab_proxy.request.per_api_key', tags=[f'client_apikey:{client_apikey}', f'indexer:{indexer_name}'])
-            # if invalid API key, return 403
-            if client_apikey not in client_api_key_map.keys():
+            statsd.increment('newznab_proxy.request.per_api_key', tags=[f'indexer:{indexer_name}'])
+            client_keys = client_api_key_map.get(client_apikey, {})
+            if not client_keys:
                 statsd.increment('newznab_proxy.invalid_client_api_key', tags=[f'indexer:{indexer_name}'])
                 return Response("Invalid API key.", status=403)
 
-            # get client keys from the json map
-            client_keys = client_api_key_map[client_apikey].keys()
-
-            # if no client keys, return 403
-            if length(client_keys) > 0:
-                # if the indexer name is in the client keys, get the indexer key
-                if indexer_name in client_keys:
-                    indexer_key = client_api_key_map[client_apikey][indexer_name]
-                else:
-                    statsd.increment('newznab_proxy.access_denied', tags=[f'indexer:{indexer_name}'])
-                    return Response("Access denied for this indexer.", status=403)
+            indexer_key = client_keys.get(indexer_name)
+            if indexer_key:
+                pass  # Proceed with the request
             else:
-                statsd.increment('newznab_proxy.invalid_api_key', tags=[f'indexer:{indexer_name}'])
-                return Response("Invalid API key or no indexers assigned", status=403)
+                statsd.increment('newznab_proxy.access_denied', tags=[f'indexer:{indexer_name}'])
+                return Response("Access denied for this indexer.", status=403)
         else:
             return Response("API key is required.", status=400)
+
         upstream_start_time = time.time()
-        app.logger.debug(f"Client API Key: {client_apikey}")
+        app.logger.debug(f"Client API Key Hash: {hashlib.sha256(client_apikey.encode()).hexdigest()[:8]}")
         app.logger.debug(f"Indexer Name: {indexer_name}")
         app.logger.debug(f"Actual API Key Retrieved: {bool(indexer_key)}")
         app.logger.debug(f"Connecting to {usenet_server_url}/api")
 
-        # just making a new map to look cleaner
+        # Prepare the query parameters
         indexer_query = validated_params.copy()
+        if usenet_api_param != "apikey":
+            indexer_query.pop('apikey', None)
+            indexer_query[usenet_api_param] = indexer_key
+        else:
+            indexer_query['apikey'] = indexer_key
+
+        # Make the request
         try:
-            if api_key_params != "apikey":
-                # remove the api key from the query if we are using a different param
-                indexer_query.remove('apikey')
-                # add the other api key to the query
-                indexer_query.append({usenet_api_param: indexer_key})
-            # make the request
             response = requests.get(f"{usenet_server_url}/api", params=indexer_query, timeout=10)
-        # handle the different exceptions
         except requests.exceptions.Timeout:
             statsd.increment('newznab_proxy.upstream.timeout', tags=[f'indexer:{indexer_name}'])
             app.logger.error(f"Timeout when contacting indexer '{indexer_name}'.")
