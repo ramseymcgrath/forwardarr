@@ -55,7 +55,6 @@ allowed_params = {
 
 # Regular expressions for parameter validation
 regex_patterns = {
-    'apikey': r'^[a-f0-9]{32}$',
     'imdbid': r'^tt\d{7,8}$',
     'o': r'^(json|xml)$',
 }
