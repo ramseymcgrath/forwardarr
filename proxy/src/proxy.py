@@ -152,23 +152,21 @@ def proxy(indexer_name):
                 return Response("Invalid API key.", status=403)
 
             # get client keys from the json map
-            client_keys = client_api_key_map.get(client_apikey)
+            client_keys = client_api_key_map[client_apikey].keys()
 
             # if no client keys, return 403
-            if client_keys:
-                indexer_key = client_keys.get(indexer_name)
-                # if indexer key exists for client, use it
-                if indexer_key:
-                    validated_params[indexer] = indexer_key
+            if length(client_keys) > 0:
+                # if the indexer name is in the client keys, get the indexer key
+                if indexer_name in client_keys:
+                    indexer_key = client_api_key_map[client_apikey][indexer_name]
                 else:
                     statsd.increment('newznab_proxy.access_denied', tags=[f'indexer:{indexer_name}'])
                     return Response("Access denied for this indexer.", status=403)
             else:
                 statsd.increment('newznab_proxy.invalid_api_key', tags=[f'indexer:{indexer_name}'])
-                return Response("Invalid API key.", status=403)
+                return Response("Invalid API key or no indexers assigned", status=403)
         else:
             return Response("API key is required.", status=400)
-
         upstream_start_time = time.time()
         app.logger.debug(f"Client API Key: {client_apikey}")
         app.logger.debug(f"Indexer Name: {indexer_name}")
