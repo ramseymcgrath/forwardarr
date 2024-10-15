@@ -66,7 +66,6 @@ indexer_name_pattern = r'^\w+$'
 
 # Allowed parameters and regex patterns for API route
 allowed_params_api = {
-    't': str,
     'q': str,
     'apikey': str,
     'cat': str,
@@ -91,7 +90,6 @@ regex_patterns_api = {
 
 # Allowed parameters and regex patterns for RSS route
 allowed_params_rss = {
-    't': str,
     'q': str,
     'apikey': str,
     'cat': str,
