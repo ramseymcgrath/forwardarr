@@ -122,7 +122,7 @@ regex_patterns_rss = {
 
 def handle_request(indexer_name, request_type='api'):
     start_time = time.time()
-    statsd.increment(f'newznab_proxy.{request_type}_request.count', tags=[f'indexer:{indexer_name}'])
+    statsd.increment(f'forwardarr.{request_type}_request.count', tags=[f'indexer:{indexer_name}'])
 
     # Validate indexer_name
     if not re.match(indexer_name_pattern, indexer_name):
@@ -165,32 +165,33 @@ def handle_request(indexer_name, request_type='api'):
                                 return Response(f"Parameter '{param}' has an invalid format.", status=400)
                             validated_values.append(value)
                     except ValueError:
-                        statsd.increment('newznab_proxy.validation_error', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
+                        statsd.increment('forwardarr.validation_error', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
                         return Response(f"Invalid value for parameter '{param}'.", status=400)
                 if len(validated_values) == 1:
                     validated_params[param] = validated_values[0]
                 else:
                     validated_params[param] = validated_values
-                statsd.increment('newznab_proxy.parameter.usage', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
+                statsd.increment('forwardarr.parameter.usage', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
             else:
                 app.logger.debug(f"Parameter '{param}' is not on the list.")
-                statsd.increment('newznab_proxy.parameter.unlisted', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
+                statsd.increment('forwardarr.parameter.usage', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
+                statsd.increment('forwardarr.parameter.unlisted', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
                 validated_params[param] = values
 
         # API key validation and substitution
         client_apikey = validated_params.get('apikey')
         if client_apikey:
-            statsd.increment('newznab_proxy.request.per_api_key', tags=[f'indexer:{indexer_name}'])
+            statsd.increment('forwardarr.request.per_api_key', tags=[f'indexer:{indexer_name}'])
             client_keys = client_api_key_map.get(client_apikey, {})
             if not client_keys:
-                statsd.increment('newznab_proxy.invalid_client_api_key', tags=[f'indexer:{indexer_name}'])
+                statsd.increment('forwardarr.invalid_client_api_key', tags=[f'indexer:{indexer_name}'])
                 return Response("Invalid API key.", status=403)
 
             indexer_key = client_keys.get(indexer_name)
             if indexer_key:
                 pass  # Proceed with the request
             else:
-                statsd.increment('newznab_proxy.access_denied', tags=[f'indexer:{indexer_name}'])
+                statsd.increment('forwardarr.access_denied', tags=[f'indexer:{indexer_name}'])
                 return Response("Access denied for this indexer.", status=403)
         else:
             return Response("API key is required.", status=400)
@@ -206,57 +207,59 @@ def handle_request(indexer_name, request_type='api'):
 
         # Prepare the query parameters
         indexer_query = validated_params.copy()
-        if usenet_api_param != "apikey":
-            indexer_query.pop('apikey', None)
-            indexer_query[usenet_api_param] = indexer_key
-        else:
-            indexer_query['apikey'] = indexer_key
+        indexer_query['apikey'] = indexer_key
 
         # Make the request
         try:
-            response = requests.get(f"{usenet_server_url}{usenet_path}", params=indexer_query, timeout=10)
+            response = requests.get(f"{usenet_server_url}{usenet_path}", params=indexer_query, timeout=60, headers={'User-Agent': 'ForwardArr Proxy'}, verify=False, allow_redirects=True)
         except requests.exceptions.Timeout:
-            statsd.increment('newznab_proxy.upstream.timeout', tags=[f'indexer:{indexer_name}'])
+            statsd.increment('forwardarr.upstream.timeout', tags=[f'indexer:{indexer_name}'])
             app.logger.error(f"Timeout when contacting indexer '{indexer_name}'.")
             return Response("Indexing server timed out.", status=504)
         except requests.exceptions.ConnectionError:
-            statsd.increment('newznab_proxy.upstream.connection_error', tags=[f'indexer:{indexer_name}'])
+            statsd.increment('forwardarr.upstream.connection_error', tags=[f'indexer:{indexer_name}'])
             app.logger.error(f"Connection error when contacting indexer '{indexer_name}'.")
             return Response("Error connecting to the indexing server.", status=502)
         except requests.exceptions.RequestException as e:
-            statsd.increment('newznab_proxy.upstream.error', tags=[f'indexer:{indexer_name}'])
+            statsd.increment('forwardarr.upstream.error', tags=[f'indexer:{indexer_name}'])
             app.logger.error(f"HTTP request failed for indexer '{indexer_name}': {e}")
             return Response("Error contacting the indexer.", status=502)
+        app.logger.debug(f"Response from {usenet_server_url}{usenet_path}: {response.status_code} Response headers: {response.headers} Response content: {response.content[:100]}")
 
         upstream_duration = time.time() - upstream_start_time
-        statsd.timing('newznab_proxy.upstream.response.time', upstream_duration * 1000, tags=[f'indexer:{indexer_name}'])
+        statsd.timing('forwardarr.upstream.response.time', upstream_duration * 1000, tags=[f'indexer:{indexer_name}'])
 
         duration = time.time() - start_time
-        statsd.timing('newznab_proxy.response.time', duration * 1000, tags=[f'indexer:{indexer_name}'])
-        statsd.increment('newznab_proxy.response.status_code', tags=[f'status_code:{response.status_code}', f'indexer:{indexer_name}'])
+        statsd.timing('forwardarr.response.time', duration * 1000, tags=[f'indexer:{indexer_name}'])
+        statsd.increment('forwardarr.response.status_code', tags=[f'status_code:{response.status_code}', f'indexer:{indexer_name}'])
 
         response_size = len(response.content)
-        statsd.histogram('newznab_proxy.response.size', response_size, tags=[f'indexer:{indexer_name}'])
+        statsd.histogram('forwardarr.response.size', response_size, tags=[f'indexer:{indexer_name}'])
 
         SLOW_REQUEST_THRESHOLD = 2  # seconds
         if duration > SLOW_REQUEST_THRESHOLD:
-            statsd.increment('newznab_proxy.slow_request', tags=[f'indexer:{indexer_name}'])
+            statsd.increment('forwardarr.slow_request', tags=[f'indexer:{indexer_name}'])
         if 400 <= response.status_code < 500:
-            statsd.increment('newznab_proxy.client_error', tags=[f'status_code:{response.status_code}', f'indexer:{indexer_name}'])
+            statsd.increment('forwardarr.client_error', tags=[f'status_code:{response.status_code}', f'indexer:{indexer_name}'])
         elif 500 <= response.status_code < 600:
-            statsd.increment('newznab_proxy.server_error', tags=[f'status_code:{response.status_code}', f'indexer:{indexer_name}'])
+            statsd.increment('forwardarr.server_error', tags=[f'status_code:{response.status_code}', f'indexer:{indexer_name}'])
 
         content_type = response.headers.get('Content-Type', 'unknown')
-        statsd.increment('newznab_proxy.response.content_type', tags=[f'content_type:{content_type}', f'indexer:{indexer_name}'])
+        statsd.increment('forwardarr.response.content_type', tags=[f'content_type:{content_type}', f'indexer:{indexer_name}'])
 
         proxied_response = make_response(response.content, response.status_code)
         for header_name, header_value in response.headers.items():
             proxied_response.headers[header_name] = header_value
+        
+        app.logger.debug(f"Response time: {duration:.3f} seconds")
+        app.logger.debug(f"Response size: {response_size} bytes")
+        app.logger.debug(f"Response content type: {content_type}")
+        app.logger.debug(f"Response status code: {response.status_code}")
         return proxied_response
 
     except Exception as e:
         exception_type = type(e).__name__
-        statsd.increment('newznab_proxy.exception.count', tags=[f'indexer:{indexer_name}', f'exception_type:{exception_type}'])
+        statsd.increment('forwardarr.exception.count', tags=[f'indexer:{indexer_name}', f'exception_type:{exception_type}'])
         app.logger.error(f"Unhandled exception for indexer '{indexer_name}': {e}\n{traceback.format_exc()}")
         return Response("Internal server error.", status=500)
 
