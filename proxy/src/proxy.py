@@ -5,6 +5,7 @@ import time
 import json
 import hashlib
 import traceback
+import logging
 from flask import Flask, request, Response, make_response
 import requests
 from datadog import initialize, statsd
@@ -106,6 +107,8 @@ def proxy(indexer_name):
         return Response(f"Indexer '{indexer_name}' not found.", status=404)
 
     usenet_server_url = indexer_name_map[indexer_name]['url']
+
+    # Different indexers use different API key parameters
     usenet_api_param = indexer_name_map[indexer_name]['api_param']
 
     try:
@@ -139,7 +142,6 @@ def proxy(indexer_name):
             else:
                 return Response(f"Parameter '{param}' is not allowed.", status=400)
 
-
         # API key validation and substitution
         client_apikey = validated_params.get('apikey')
         if client_apikey:
@@ -148,7 +150,8 @@ def proxy(indexer_name):
             if client_apikey not in client_api_key_map:
                 statsd.increment('newznab_proxy.invalid_client_api_key', tags=[f'indexer:{indexer_name}'])
                 return Response("Invalid API key.", status=403)
-            
+
+            # get client keys from the json map
             client_keys = client_api_key_map.get(client_apikey)
 
             # if no client keys, return 403
@@ -171,6 +174,8 @@ def proxy(indexer_name):
         app.logger.debug(f"Indexer Name: {indexer_name}")
         app.logger.debug(f"Actual API Key Retrieved: {bool(indexer_key)}")
         app.logger.debug(f"Connecting to {usenet_server_url}/api")
+
+        # just making a new map to look cleaner
         indexer_query = validated_params.copy()
         try:
             if api_key_params != "apikey":
@@ -215,7 +220,6 @@ def proxy(indexer_name):
         proxied_response = make_response(response.content, response.status_code)
         for header_name, header_value in response.headers.items():
             proxied_response.headers[header_name] = header_value
-
         return proxied_response
 
     except Exception as e:
