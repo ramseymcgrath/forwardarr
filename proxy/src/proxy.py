@@ -48,6 +48,8 @@ allowed_params = {
     'ep': int,
     'o': str,
     'extended': int,
+    'id': int,
+    'r': str,
 }
 
 # Regular expressions for parameter validation
@@ -103,12 +105,14 @@ def proxy(indexer_name):
     if indexer_name not in indexer_name_map:
         return Response(f"Indexer '{indexer_name}' not found.", status=404)
 
-    usenet_server_url = indexer_name_map[indexer_name]
+    usenet_server_url = indexer_name_map[indexer_name]['url']
+    usenet_api_param = indexer_name_map[indexer_name]['api_param']
 
     try:
         params = request.args.to_dict(flat=False)
         validated_params = {}
 
+        # Validate and normalize parameters
         for param, values in params.items():
             if param in allowed_params:
                 expected_type = allowed_params[param]
@@ -135,18 +139,24 @@ def proxy(indexer_name):
             else:
                 return Response(f"Parameter '{param}' is not allowed.", status=400)
 
+
         # API key validation and substitution
         client_apikey = validated_params.get('apikey')
         if client_apikey:
-            statsd.increment('newznab_proxy.request.per_api_key', tags=[f'client_apikey:{hashed_api_key}', f'indexer:{indexer_name}'])
+            statsd.increment('newznab_proxy.request.per_api_key', tags=[f'client_apikey:{client_apikey}', f'indexer:{indexer_name}'])
+            # if invalid API key, return 403
             if client_apikey not in client_api_key_map:
                 statsd.increment('newznab_proxy.invalid_client_api_key', tags=[f'indexer:{indexer_name}'])
                 return Response("Invalid API key.", status=403)
+            
             client_keys = client_api_key_map.get(client_apikey)
+
+            # if no client keys, return 403
             if client_keys:
                 indexer_key = client_keys.get(indexer_name)
-                if actual_apikey:
-                    validated_params['apikey'] = actual_apikey
+                # if indexer key exists for client, use it
+                if indexer_key:
+                    validated_params[indexer] = indexer_key
                 else:
                     statsd.increment('newznab_proxy.access_denied', tags=[f'indexer:{indexer_name}'])
                     return Response("Access denied for this indexer.", status=403)
@@ -159,10 +169,14 @@ def proxy(indexer_name):
         upstream_start_time = time.time()
         app.logger.debug(f"Client API Key: {client_apikey}")
         app.logger.debug(f"Indexer Name: {indexer_name}")
-        app.logger.debug(f"Actual API Key Retrieved: {bool(actual_apikey)}")
+        app.logger.debug(f"Actual API Key Retrieved: {bool(indexer_key)}")
         app.logger.debug(f"Connecting to {usenet_server_url}/api")
+        indexer_query = validated_params.copy()
         try:
-            response = requests.get(f"{usenet_server_url}/api", params=validated_params, timeout=10)
+            if api_key_params != "apikey":
+                indexer_query.remove('apikey')
+                indexer_query.append({usenet_api_param: indexer_key})
+            response = requests.get(f"{usenet_server_url}/api", params=indexer_query, timeout=10)
         except requests.exceptions.Timeout:
             statsd.increment('newznab_proxy.upstream.timeout', tags=[f'indexer:{indexer_name}'])
             app.logger.error(f"Timeout when contacting indexer '{indexer_name}'.")
