@@ -146,7 +146,7 @@ def proxy(indexer_name):
         if client_apikey:
             statsd.increment('newznab_proxy.request.per_api_key', tags=[f'client_apikey:{client_apikey}', f'indexer:{indexer_name}'])
             # if invalid API key, return 403
-            if client_apikey not in client_api_key_map:
+            if client_apikey not in client_api_key_map.keys():
                 statsd.increment('newznab_proxy.invalid_client_api_key', tags=[f'indexer:{indexer_name}'])
                 return Response("Invalid API key.", status=403)
 
