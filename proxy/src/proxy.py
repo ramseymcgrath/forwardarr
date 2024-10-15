@@ -22,37 +22,12 @@ logging.basicConfig(
 # Optionally, set the Flask app logger level
 app.logger.setLevel(logging.DEBUG)
 
+# Initialize Datadog client
 options = {
     'statsd_host': os.environ.get('DD_AGENT_HOST', 'localhost'),
     'statsd_port': int(os.environ.get('DD_DOGSTATSD_PORT', 8125)),
 }
 initialize(**options)
-
-# Allowed parameters and their expected types
-allowed_params = {
-    't': str,
-    'q': str,
-    'apikey': str,
-    'cat': str,
-    'limit': int,
-    'offset': int,
-    'rid': int,
-    'imdbid': str,
-    'tvdbid': int,
-    'season': int,
-    'ep': int,
-    'o': str,
-    'extended': int,
-    'id': int,
-    'r': str,
-}
-
-# Regular expressions for parameter validation
-regex_patterns = {
-    'apikey': r'^[A-Fa-f0-9]{24}$',
-    'imdbid': r'^tt\d{7,8}$',
-    'o': r'^(json|xml)$',
-}
 
 # Configuration file paths
 INDEXER_URLS_JSON = os.environ.get('INDEXER_URLS_JSON', '/config/indexer_config.json')
@@ -89,19 +64,87 @@ except Exception as e:
 # Indexer name validation pattern
 indexer_name_pattern = r'^\w+$'
 
-@app.route('/<indexer_name>/api', methods=['GET'])
-def proxy(indexer_name):
-    start_time = time.time()
-    statsd.increment('newznab_proxy.request.count', tags=[f'indexer:{indexer_name}'])
+# Allowed parameters and regex patterns for API route
+allowed_params_api = {
+    't': str,
+    'q': str,
+    'apikey': str,
+    'cat': str,
+    'limit': int,
+    'offset': int,
+    'imdbid': str,
+    'tvdbid': int,
+    'rid': int,
+    'season': int,
+    'ep': int,
+    'o': str,
+    'extended': int,
+    'id': str,
+    'r': str,
+}
 
+regex_patterns_api = {
+    'apikey': r'^[A-Fa-f0-9]{24}$',
+    'imdbid': r'^tt\d{7,8}$',
+    'o': r'^(json|xml)$',
+}
+
+# Allowed parameters and regex patterns for RSS route
+allowed_params_rss = {
+    't': str,
+    'q': str,
+    'apikey': str,
+    'cat': str,
+    'limit': int,
+    'offset': int,
+    'imdbid': str,
+    'tvdbid': int,
+    'rid': int,
+    'season': int,
+    'ep': int,
+    'o': str,
+    'extended': int,
+    'id': str,
+    'r': str,
+    'genre': str,
+    'author': str,
+    'artist': str,
+    'album': str,
+    'track': str,
+    'publisher': str,
+}
+
+regex_patterns_rss = {
+    'apikey': r'^[A-Fa-f0-9]{24}$',
+    't': r'^(search|tvsearch|movie|music|book|pre|xxx|caps|browse)$',
+    'imdbid': r'^tt\d{7,8}$',
+    'o': r'^(json|xml)$',
+    # Add other RSS-specific patterns as needed
+}
+
+def handle_request(indexer_name, request_type='api'):
+    start_time = time.time()
+    statsd.increment(f'newznab_proxy.{request_type}_request.count', tags=[f'indexer:{indexer_name}'])
+
+    # Validate indexer_name
     if not re.match(indexer_name_pattern, indexer_name):
         return Response("Invalid indexer name format.", status=400)
 
     if indexer_name not in indexer_name_map:
         return Response(f"Indexer '{indexer_name}' not found.", status=404)
 
-    usenet_server_url = indexer_name_map[indexer_name]['url']
-    usenet_api_param = indexer_name_map[indexer_name].get('api_param', 'apikey')
+    indexer_info = indexer_name_map[indexer_name]
+    usenet_server_url = indexer_info['url']
+    usenet_api_param = indexer_info.get('api_param', 'apikey')
+    usenet_path = indexer_info.get(f'{request_type}_path', f'/{request_type}')
+
+    # Select allowed parameters and regex patterns
+    if request_type == 'rss':
+        allowed_params = allowed_params_rss
+        regex_patterns = regex_patterns_rss
+    else:
+        allowed_params = allowed_params_api
+        regex_patterns = regex_patterns_api
 
     try:
         params = request.args.to_dict(flat=False)
@@ -132,7 +175,9 @@ def proxy(indexer_name):
                     validated_params[param] = validated_values
                 statsd.increment('newznab_proxy.parameter.usage', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
             else:
-                return Response(f"Parameter '{param}' is not allowed.", status=400)
+                app.logger.debug(f"Parameter '{param}' is not on the list.")
+                statsd.increment('newznab_proxy.parameter.unlisted', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
+                validated_params[param] = values
 
         # API key validation and substitution
         client_apikey = validated_params.get('apikey')
@@ -153,10 +198,13 @@ def proxy(indexer_name):
             return Response("API key is required.", status=400)
 
         upstream_start_time = time.time()
-        app.logger.debug(f"Client API Key Hash: {hashlib.sha256(client_apikey.encode()).hexdigest()[:8]}")
+        # Log hashed client API key for security
+        client_apikey_hash = hashlib.sha256(client_apikey.encode()).hexdigest()[:8]
+        app.logger.debug(f"Client API Key Hash: {client_apikey_hash}")
+        app.logger.debug(f"Client Name: {client_keys.get('user')}")
         app.logger.debug(f"Indexer Name: {indexer_name}")
         app.logger.debug(f"Actual API Key Retrieved: {bool(indexer_key)}")
-        app.logger.debug(f"Connecting to {usenet_server_url}/api")
+        app.logger.debug(f"Connecting to {usenet_server_url}{usenet_path}")
 
         # Prepare the query parameters
         indexer_query = validated_params.copy()
@@ -168,7 +216,7 @@ def proxy(indexer_name):
 
         # Make the request
         try:
-            response = requests.get(f"{usenet_server_url}/api", params=indexer_query, timeout=10)
+            response = requests.get(f"{usenet_server_url}{usenet_path}", params=indexer_query, timeout=10)
         except requests.exceptions.Timeout:
             statsd.increment('newznab_proxy.upstream.timeout', tags=[f'indexer:{indexer_name}'])
             app.logger.error(f"Timeout when contacting indexer '{indexer_name}'.")
@@ -213,6 +261,16 @@ def proxy(indexer_name):
         statsd.increment('newznab_proxy.exception.count', tags=[f'indexer:{indexer_name}', f'exception_type:{exception_type}'])
         app.logger.error(f"Unhandled exception for indexer '{indexer_name}': {e}\n{traceback.format_exc()}")
         return Response("Internal server error.", status=500)
+
+# API route
+@app.route('/<indexer_name>/api', methods=['GET'])
+def api_proxy(indexer_name):
+    return handle_request(indexer_name, request_type='api')
+
+# RSS route
+@app.route('/<indexer_name>/rss', methods=['GET'])
+def rss_proxy(indexer_name):
+    return handle_request(indexer_name, request_type='rss')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
