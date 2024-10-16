@@ -1,0 +1,11 @@
+{
+    "indexer1" : {
+        "url" : "https://indexer1.com",
+        "api_param" : "apikey"
+    },
+    "indexer2" : {
+        "url" : "https://indexer2.com",
+        "api_param" : "userid",
+        "timeout" : 60
+    }
+}
