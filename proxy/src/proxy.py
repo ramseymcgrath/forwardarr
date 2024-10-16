@@ -186,17 +186,15 @@ def handle_request(indexer_name, request_type='api'):
             if not client_keys:
                 statsd.increment('forwardarr.invalid_client_api_key', tags=[f'indexer:{indexer_name}'])
                 return Response("Invalid API key.", status=403)
-
-            indexer_key = client_keys.get(indexer_name)
-            if indexer_key:
-                pass  # Proceed with the request
-            else:
+            if indexer_name not in client_keys:
                 statsd.increment('forwardarr.access_denied', tags=[f'indexer:{indexer_name}'])
                 return Response("Access denied for this indexer.", status=403)
+            indexer_key = client_keys[indexer_name]['key']
+            if client_keys[indexer_name].get('extra_params'):
+                validated_params.append(client_keys[indexer_name]['extra_params'])
         else:
             return Response("API key is required.", status=400)
 
-        upstream_start_time = time.time()
         # Log hashed client API key for security
         client_apikey_hash = hashlib.sha256(client_apikey.encode()).hexdigest()[:8]
         app.logger.debug(f"Client API Key Hash: {client_apikey_hash}")
@@ -208,15 +206,18 @@ def handle_request(indexer_name, request_type='api'):
         # Prepare the query parameters
         indexer_query = validated_params.copy()
         indexer_query['apikey'] = indexer_key
+        indexer_query[usenet_api_param] = indexer_key
         headers = request.headers.copy()
         headers['Host'] = urlparse(usenet_server_url).netloc
         headers['Accept-Encoding'] = 'gzip, deflate'
-        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
-
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'        
         # Remove headers that might cause issues
         headers.pop('Content-Length', None)
         headers.pop('Transfer-Encoding', None)
-
+        
+        app.logger.debug(f"Request headers: {headers}")
+        app.logger.debug(f"Request parameters: {indexer_query}")
+        upstream_start_time = time.time()
         # Make the request
         try:
             response = requests.get(f"{usenet_server_url}{usenet_path}", params=indexer_query, timeout=60, headers=headers, verify=False, stream=True)
