@@ -16,11 +16,9 @@ app = Flask(__name__)
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+    format='%(asctime)s %(levelname)s %(message)s',
     handlers=[logging.StreamHandler()]
 )
-
-# Optionally, set the Flask app logger level
 app.logger.setLevel(logging.DEBUG)
 
 # Initialize Datadog client
@@ -104,7 +102,7 @@ allowed_params_rss.update({
 
 regex_patterns_rss = regex_patterns_api.copy()
 regex_patterns_rss.update({
-    # Add any RSS-specific patterns
+    # Add any RSS-specific patterns when needed
 })
 
 def handle_request(indexer_name, request_type='api'):
@@ -142,12 +140,9 @@ def handle_request(indexer_name, request_type='api'):
     else:
         allowed_params = allowed_params_api
         regex_patterns = regex_patterns_api
-
     try:
         params = request.args.to_dict(flat=False)
         validated_params = {}
-
-        # Validate and normalize parameters
         for param, values in params.items():
             if param in allowed_params:
                 expected_type = allowed_params[param]
@@ -200,6 +195,7 @@ def handle_request(indexer_name, request_type='api'):
         app.logger.debug(f"Indexer Name: {indexer_name}")
         app.logger.debug(f"Actual API Key Retrieved: {bool(indexer_key)}")
         app.logger.debug(f"Connecting to {usenet_server_url}{usenet_path}")
+        is_grab = validated_params.get('t') == 'get'
 
         # Prepare the query parameters
         indexer_query = validated_params.copy()
@@ -270,19 +266,42 @@ def handle_request(indexer_name, request_type='api'):
             except Exception as e:
                 app.logger.error(f"Error streaming response: {e}")
 
-        # Exclude certain headers
-        excluded_headers = [
-            'content-length',
-             'transfer-encoding',
-              'connection'
+        ## If the request is a grab request, we need to return the response headers
+        if is_grab:
+            # Ensure Content-Type is 'application/x-nzb'
+            content_type = response.headers.get('Content-Type', 'application/x-nzb')
+            excluded_headers = [
+                'content-length',
+                'transfer-encoding',
+                'connection',
+                'content-type'
             ]
-        response_headers = [(name, value) for (name, value) in response.raw.headers.items()
-                            if name.lower() not in excluded_headers]
+            response_headers = [(name, value) for (name, value) in response.raw.headers.items() if name.lower() not in excluded_headers]
+            response_headers.append(('Content-Type', content_type))
 
-        app.logger.debug(f"Response headers to client: {response_headers}")
-        app.logger.debug(f"Response status code: {response.status_code}")
+            content_disposition = response.headers.get('Content-Disposition')
+            if content_disposition:
+                response_headers.append(('Content-Disposition', content_disposition))
+            else:
+                response_headers.append(('Content-Disposition', 'attachment; filename="download.nzb"'))
 
-        return Response(generate(), response.status_code, response_headers)
+            app.logger.debug(f"Response headers to client: {response_headers}")
+            app.logger.debug(f"Response status code: {response.status_code}")
+
+            return Response(generate(), response.status_code, response_headers)
+        ## Otherwise, we can just return the response
+        else: 
+            excluded_headers = [
+                'content-length',
+                'transfer-encoding',
+                'connection'
+            ]
+            response_headers = [(name, value) for (name, value) in response.raw.headers.items() if name.lower() not in excluded_headers]
+
+            app.logger.debug(f"Response headers to client: {response_headers}")
+            app.logger.debug(f"Response status code: {response.status_code}")
+
+            return Response(generate(), response.status_code, response_headers)
 
     except Exception as e:
         exception_type = type(e).__name__
@@ -299,6 +318,11 @@ def api_proxy(indexer_name):
 @app.route('/<indexer_name>/rss', methods=['GET'])
 def rss_proxy(indexer_name):
     return handle_request(indexer_name, request_type='rss')
+
+# NZB get route
+@app.route('/<indexer_name>/get', methods=['GET'])
+def get_nzb(indexer_name):
+    return handle_request(indexer_name, request_type='api')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
