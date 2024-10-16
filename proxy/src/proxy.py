@@ -208,10 +208,18 @@ def handle_request(indexer_name, request_type='api'):
         # Prepare the query parameters
         indexer_query = validated_params.copy()
         indexer_query['apikey'] = indexer_key
+        headers = request.headers.copy()
+        headers['Host'] = urlparse(usenet_server_url).netloc
+        headers['Accept-Encoding'] = 'gzip, deflate'
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+
+        # Remove headers that might cause issues
+        headers.pop('Content-Length', None)
+        headers.pop('Transfer-Encoding', None)
 
         # Make the request
         try:
-            response = requests.get(f"{usenet_server_url}{usenet_path}", params=indexer_query, timeout=60, headers={'User-Agent': 'ForwardArr Proxy'}, verify=False, allow_redirects=True)
+            response = requests.get(f"{usenet_server_url}{usenet_path}", params=indexer_query, timeout=60, headers=headers, verify=False, stream=True)
         except requests.exceptions.Timeout:
             statsd.increment('forwardarr.upstream.timeout', tags=[f'indexer:{indexer_name}'])
             app.logger.error(f"Timeout when contacting indexer '{indexer_name}'.")
@@ -243,19 +251,20 @@ def handle_request(indexer_name, request_type='api'):
             statsd.increment('forwardarr.client_error', tags=[f'status_code:{response.status_code}', f'indexer:{indexer_name}'])
         elif 500 <= response.status_code < 600:
             statsd.increment('forwardarr.server_error', tags=[f'status_code:{response.status_code}', f'indexer:{indexer_name}'])
-
-        content_type = response.headers.get('Content-Type', 'unknown')
-        statsd.increment('forwardarr.response.content_type', tags=[f'content_type:{content_type}', f'indexer:{indexer_name}'])
-
-        proxied_response = make_response(response.content, response.status_code)
-        for header_name, header_value in response.headers.items():
-            proxied_response.headers[header_name] = header_value
         
+        def generate():
+            for chunk in response.raw.stream(decode_content=False):
+                yield chunk
+
+        excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
+        response_headers = [(name, value) for (name, value) in response.raw.headers.items()
+             if name.lower() not in excluded_headers]
+        statsd.increment('forwardarr.response.content_type', tags=[f'content_type:{content_type}', f'indexer:{indexer_name}'])
         app.logger.debug(f"Response time: {duration:.3f} seconds")
         app.logger.debug(f"Response size: {response_size} bytes")
         app.logger.debug(f"Response content type: {content_type}")
         app.logger.debug(f"Response status code: {response.status_code}")
-        return proxied_response
+        return Response(generate(), response.status_code, response_headers)
 
     except Exception as e:
         exception_type = type(e).__name__
