@@ -122,13 +122,13 @@ def handle_request(indexer_name, request_type='api'):
     usenet_server_url = indexer_info['url']
 
     ## Support a custom userid param
-    if indexer_info['api_param'] :
+    if 'api_param' in indexer_info:
         user_id_param = indexer_info['api_param']
     else:
         user_id_param = 'apikey'
 
     ## Support a custom timeout
-    if indexer_info['timeout'] :
+    if 'timeout' in indexer_info:
         timeout = indexer_info['timeout']
     else:
         timeout = 60
