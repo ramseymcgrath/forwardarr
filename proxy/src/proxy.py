@@ -120,7 +120,19 @@ def handle_request(indexer_name, request_type='api'):
 
     indexer_info = indexer_name_map[indexer_name]
     usenet_server_url = indexer_info['url']
-    usenet_api_param = indexer_info.get('api_param', 'apikey')
+
+    ## Support a custom userid param
+    if indexer_info['api_param'] :
+        user_id_param = indexer_info['api_param']
+    else:
+        user_id_param = 'apikey'
+
+    ## Support a custom timeout
+    if indexer_info['timeout'] :
+        timeout = indexer_info['timeout']
+    else:
+        timeout = 60
+    
     usenet_path = indexer_info.get(f'{request_type}_path', f'/{request_type}')
 
     # Select allowed parameters and regex patterns
@@ -174,7 +186,7 @@ def handle_request(indexer_name, request_type='api'):
                 statsd.increment('forwardarr.access_denied', tags=[f'indexer:{indexer_name}'])
                 return Response("Access denied for this indexer.", status=403)
             indexer_key = client_keys[indexer_name]['key']
-            if client_keys[indexer_name].get('extra_params'):
+            if client_keys[indexer_name]['extra_params']:
                 validated_params.update(client_keys[indexer_name]['extra_params'])
         else:
             return Response("API key is required.", status=400)
@@ -189,11 +201,10 @@ def handle_request(indexer_name, request_type='api'):
 
         # Prepare the query parameters
         indexer_query = validated_params.copy()
-        if usenet_api_param != 'apikey':
-            indexer_query.pop('apikey', None)
-            indexer_query[usenet_api_param] = indexer_key
-        else:
+        if user_id_param == 'apikey':
             indexer_query['apikey'] = indexer_key
+        else:
+            indexer_query.update({user_id_param: indexer_key})
 
         # Prepare headers
         headers = {
@@ -210,7 +221,7 @@ def handle_request(indexer_name, request_type='api'):
             response = requests.get(
                 f"{usenet_server_url}{usenet_path}",
                 params=indexer_query,
-                timeout=60,
+                timeout=timeout,
                 headers=headers,
                 verify=True,
                 stream=True
@@ -258,7 +269,11 @@ def handle_request(indexer_name, request_type='api'):
                 app.logger.error(f"Error streaming response: {e}")
 
         # Exclude certain headers
-        excluded_headers = ['content-length', 'transfer-encoding', 'connection']
+        excluded_headers = [
+            'content-length',
+             'transfer-encoding',
+              'connection'
+            ]
         response_headers = [(name, value) for (name, value) in response.raw.headers.items()
                             if name.lower() not in excluded_headers]
 
