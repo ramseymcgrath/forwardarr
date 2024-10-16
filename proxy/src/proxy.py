@@ -8,6 +8,7 @@ import traceback
 import logging
 from flask import Flask, request, Response, make_response
 import requests
+from urllib.parse import urlparse
 from datadog import initialize, statsd
 
 app = Flask(__name__)
@@ -66,6 +67,7 @@ indexer_name_pattern = r'^\w+$'
 
 # Allowed parameters and regex patterns for API route
 allowed_params_api = {
+    't': str,
     'q': str,
     'apikey': str,
     'cat': str,
@@ -84,41 +86,26 @@ allowed_params_api = {
 
 regex_patterns_api = {
     'apikey': r'^[A-Fa-f0-9]{24}$',
+    't': r'^[\w]+$',
     'imdbid': r'^tt\d{7,8}$',
     'o': r'^(json|xml)$',
 }
 
 # Allowed parameters and regex patterns for RSS route
-allowed_params_rss = {
-    'q': str,
-    'apikey': str,
-    'cat': str,
-    'limit': int,
-    'offset': int,
-    'imdbid': str,
-    'tvdbid': int,
-    'rid': int,
-    'season': int,
-    'ep': int,
-    'o': str,
-    'extended': int,
-    'id': str,
-    'r': str,
+allowed_params_rss = allowed_params_api.copy()
+allowed_params_rss.update({
     'genre': str,
     'author': str,
     'artist': str,
     'album': str,
     'track': str,
     'publisher': str,
-}
+})
 
-regex_patterns_rss = {
-    'apikey': r'^[A-Fa-f0-9]{24}$',
-    't': r'^(search|tvsearch|movie|music|book|pre|xxx|caps|browse)$',
-    'imdbid': r'^tt\d{7,8}$',
-    'o': r'^(json|xml)$',
-    # Add other RSS-specific patterns as needed
-}
+regex_patterns_rss = regex_patterns_api.copy()
+regex_patterns_rss.update({
+    # Add any RSS-specific patterns
+})
 
 def handle_request(indexer_name, request_type='api'):
     start_time = time.time()
@@ -133,7 +120,19 @@ def handle_request(indexer_name, request_type='api'):
 
     indexer_info = indexer_name_map[indexer_name]
     usenet_server_url = indexer_info['url']
-    usenet_api_param = indexer_info.get('api_param', 'apikey')
+
+    ## Support a custom userid param
+    if 'api_param' in indexer_info:
+        user_id_param = indexer_info['api_param']
+    else:
+        user_id_param = 'apikey'
+
+    ## Support a custom timeout
+    if 'timeout' in indexer_info:
+        timeout = indexer_info['timeout']
+    else:
+        timeout = 60
+    
     usenet_path = indexer_info.get(f'{request_type}_path', f'/{request_type}')
 
     # Select allowed parameters and regex patterns
@@ -173,30 +172,27 @@ def handle_request(indexer_name, request_type='api'):
                     validated_params[param] = validated_values
                 statsd.increment('forwardarr.parameter.usage', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
             else:
-                app.logger.debug(f"Parameter '{param}' is not on the list.")
-                statsd.increment('forwardarr.parameter.usage', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
-                statsd.increment('forwardarr.parameter.unlisted', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
-                validated_params[param] = values
+                return Response(f"Parameter '{param}' is not allowed.", status=400)
 
         # API key validation and substitution
         client_apikey = validated_params.get('apikey')
         if client_apikey:
             statsd.increment('forwardarr.request.per_api_key', tags=[f'indexer:{indexer_name}'])
-            client_keys = client_api_key_map.get(client_apikey, {})
-            if not client_keys:
+            if client_apikey not in client_api_key_map:
                 statsd.increment('forwardarr.invalid_client_api_key', tags=[f'indexer:{indexer_name}'])
                 return Response("Invalid API key.", status=403)
-
-            indexer_key = client_keys.get(indexer_name)
-            if indexer_key:
-                pass  # Proceed with the request
-            else:
+            client_keys = client_api_key_map[client_apikey]
+            if indexer_name not in client_keys:
                 statsd.increment('forwardarr.access_denied', tags=[f'indexer:{indexer_name}'])
                 return Response("Access denied for this indexer.", status=403)
+            indexer_key = client_keys[indexer_name]['key']
+            try:
+                validated_params.update(client_keys[indexer_name]['extra_params'])
+            except KeyError:
+                pass
         else:
             return Response("API key is required.", status=400)
 
-        upstream_start_time = time.time()
         # Log hashed client API key for security
         client_apikey_hash = hashlib.sha256(client_apikey.encode()).hexdigest()[:8]
         app.logger.debug(f"Client API Key Hash: {client_apikey_hash}")
@@ -207,11 +203,31 @@ def handle_request(indexer_name, request_type='api'):
 
         # Prepare the query parameters
         indexer_query = validated_params.copy()
-        indexer_query['apikey'] = indexer_key
+        if user_id_param == 'apikey':
+            indexer_query['apikey'] = indexer_key
+        else:
+            indexer_query.update({user_id_param: indexer_key})
 
+        # Prepare headers
+        headers = {
+            'Host': urlparse(usenet_server_url).netloc,
+            'Accept-Encoding': 'gzip, deflate',
+            'User-Agent': request.headers.get('User-Agent', 'ForwardArr Proxy'),
+        }
+
+        app.logger.debug(f"Request headers: {headers}")
+        app.logger.debug(f"Request parameters: {indexer_query}")
+        upstream_start_time = time.time()
         # Make the request
         try:
-            response = requests.get(f"{usenet_server_url}{usenet_path}", params=indexer_query, timeout=60, headers={'User-Agent': 'ForwardArr Proxy'}, verify=False, allow_redirects=True)
+            response = requests.get(
+                f"{usenet_server_url}{usenet_path}",
+                params=indexer_query,
+                timeout=timeout,
+                headers=headers,
+                verify=True,
+                stream=True
+            )
         except requests.exceptions.Timeout:
             statsd.increment('forwardarr.upstream.timeout', tags=[f'indexer:{indexer_name}'])
             app.logger.error(f"Timeout when contacting indexer '{indexer_name}'.")
@@ -224,7 +240,6 @@ def handle_request(indexer_name, request_type='api'):
             statsd.increment('forwardarr.upstream.error', tags=[f'indexer:{indexer_name}'])
             app.logger.error(f"HTTP request failed for indexer '{indexer_name}': {e}")
             return Response("Error contacting the indexer.", status=502)
-        app.logger.debug(f"Response from {usenet_server_url}{usenet_path}: {response.status_code} Response headers: {response.headers} Response content: {response.content[:100]}")
 
         upstream_duration = time.time() - upstream_start_time
         statsd.timing('forwardarr.upstream.response.time', upstream_duration * 1000, tags=[f'indexer:{indexer_name}'])
@@ -233,8 +248,11 @@ def handle_request(indexer_name, request_type='api'):
         statsd.timing('forwardarr.response.time', duration * 1000, tags=[f'indexer:{indexer_name}'])
         statsd.increment('forwardarr.response.status_code', tags=[f'status_code:{response.status_code}', f'indexer:{indexer_name}'])
 
-        response_size = len(response.content)
-        statsd.histogram('forwardarr.response.size', response_size, tags=[f'indexer:{indexer_name}'])
+        # Content type and size
+        content_type = response.headers.get('Content-Type', 'unknown')
+        response_size = response.headers.get('Content-Length', 'unknown')
+        statsd.histogram('forwardarr.response.size', int(response_size) if response_size.isdigit() else 0, tags=[f'indexer:{indexer_name}'])
+        statsd.increment('forwardarr.response.content_type', tags=[f'content_type:{content_type}', f'indexer:{indexer_name}'])
 
         SLOW_REQUEST_THRESHOLD = 2  # seconds
         if duration > SLOW_REQUEST_THRESHOLD:
@@ -244,18 +262,27 @@ def handle_request(indexer_name, request_type='api'):
         elif 500 <= response.status_code < 600:
             statsd.increment('forwardarr.server_error', tags=[f'status_code:{response.status_code}', f'indexer:{indexer_name}'])
 
-        content_type = response.headers.get('Content-Type', 'unknown')
-        statsd.increment('forwardarr.response.content_type', tags=[f'content_type:{content_type}', f'indexer:{indexer_name}'])
+        # Stream the response back to the client
+        def generate():
+            try:
+                for chunk in response.raw.stream(decode_content=False):
+                    yield chunk
+            except Exception as e:
+                app.logger.error(f"Error streaming response: {e}")
 
-        proxied_response = make_response(response.content, response.status_code)
-        for header_name, header_value in response.headers.items():
-            proxied_response.headers[header_name] = header_value
-        
-        app.logger.debug(f"Response time: {duration:.3f} seconds")
-        app.logger.debug(f"Response size: {response_size} bytes")
-        app.logger.debug(f"Response content type: {content_type}")
+        # Exclude certain headers
+        excluded_headers = [
+            'content-length',
+             'transfer-encoding',
+              'connection'
+            ]
+        response_headers = [(name, value) for (name, value) in response.raw.headers.items()
+                            if name.lower() not in excluded_headers]
+
+        app.logger.debug(f"Response headers to client: {response_headers}")
         app.logger.debug(f"Response status code: {response.status_code}")
-        return proxied_response
+
+        return Response(generate(), response.status_code, response_headers)
 
     except Exception as e:
         exception_type = type(e).__name__

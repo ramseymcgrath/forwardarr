@@ -1,0 +1,27 @@
+{
+  "12345678abcdef12345678abc": { 
+    "indexer1":{
+        "key" : "user1_key_here"
+    },
+    "indexer2" : {
+      "key" : "user1_key_here",
+      "extra_params" : {
+        "uid" : 12345
+      }
+    },
+    "user": "user1"
+  },
+  "abcdef12345678abc12345678": {
+    "indexer1":{
+        "key" : "user2_key_here"
+    },
+    "indexer2" : {
+      "key" : "user2_key_here",
+      "extra_params" : {
+        "uid" : 5678
+      }
+    },
+    "user": "user2"
+  }
+  }
+  

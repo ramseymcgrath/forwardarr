@@ -1,38 +1,18 @@
 version: '3.8'
 
 services:
-  flask_app:
+  forwardarr:
     image: ghcr.io/ramseymcgrath/forwardarr:latest
-    container_name: flask_app
-    restart: unless-stopped
+    container_name: forwardarr
+    user: 1000:1000
     volumes:
-      - ./flask_app/api_keys.json:/config/api_keys.json:ro
-      - ./flask_app/indexer_config.json:/config/indexer_config.json:ro
+      - /data/docker/forwardarr/config/api_keys.json:/config/api_keys.json:ro
+      - /data/docker/forwardarr/config/indexer_urls.json:/config/indexer_urls.json:ro
     environment:
-      - NEWZNAB_SERVER_URL=${NEWZNAB_SERVER_URL}
-      - API_KEYS_FILE=/app/api_keys.json
-      - DD_AGENT_HOST=datadog-agent
+      - INDEXER_URLS_JSON=/config/indexer_urls.json
+      - API_KEYS_FILE=/config/api_keys.json
       - DD_DOGSTATSD_PORT=8125
-    networks:
-      - app-network
-
-  nginx:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
-    container_name: nginx
-    restart: unless-stopped
+      - DD_AGENT_HOST=10.0.0.166
     ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - flask_app
-    volumes:
-      - ./nginx/ssl/certs:/etc/ssl/certs:ro
-      - ./nginx/ssl/private:/etc/ssl/private:ro
-    networks:
-      - app-network
-
-networks:
-  app-network:
-    driver: bridge
+     - 6060:8080
+    restart: unless-stopped

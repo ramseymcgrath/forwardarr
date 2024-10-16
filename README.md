@@ -1,54 +1,26 @@
 # forwardarr
-This is an example configuration to forward newznab queries from external clients though a single endpoint. Its expected that traffic will come through cloudflare private IPs to hit the application instead of the internet. 
+Forwardarr enables you to proxy usenet queries from multiple clients to multiple indexers though a single endpoint. Client access tokens and allowed servers can be managed individually and wrapped into a single token. It can serve as a proxy from internal clients to the internet, and allow for more complex network routing. It also allows clients to use multiple indexers easily with a single api key.
 
 ## Getting started
 
-For ssl connectivity, get a cloudflare private access origin certificate and add it to the nginx docker code using
-
-```sh
-mkdir -p ./nginx/ssl/private
-mv mykey.key ./nginx/ssl/private/origin.key
-chmod 600 ./nginx/ssl/private/origin.key
-```
+### Deployment
 
 Generate 2 configuration files:
 
-`user_keys.json` should contain a unique 32 bit hex api key for each user, and a map of their indexer api keys. See [the example](/examples/user_keys.json)
+`user_keys.json` should contain a unique 24 hex api key for each user, and a map of their indexer api keys and optional params. See [the example](/examples/user_keys.json.example)
 
-`indexer_configs.json` should contain a map of indexer name used in the query path to its url.
+`indexer_urls.json` should contain a list of indexers with their name and some optional parameters. See [the example](/examples/indexer_urls.json.example)
 
+Mount the files to the docker container's `/config` directory and hit play to launch forwardarr. See the [docker compose example](/docker-compose.yaml)
 
-## Cloudflare support
+### Usage
 
-Cloudflare is enabled by default to front requests to the proxy app. You'll need to setup an account and cloudflare zero trust publisher to forward traffic through to nginx (and along to the proxy). 
+When configuring your usenet client, replace the indexer url with your own url with a path to the target indexer. For example `https://indexers.myforwardarrtestsite.com/indexer1/api`. Use `apikey=your_forwardarrapikey` for access but the remaining indexer queries can match the ones expected by your target indexer.
 
-### Cloudflare origin ssl cert
+## Connectivity
 
-Download a cloudflare origin cert for your domain and use the bash above to add it to nginx.
+Forwardarr provides a level of ssl validation and validates query params and headers, but does not expose an ssl endpoint. A private access tunnel or HTTPs proxy should be used.
 
-### Cloudflare source IPs
+## Datadog Monitoring
 
-To enforce traffic originating only from cloudflare publishers, you'll need to add their source ips to the nginx whitelist. Localhost will be allowed as well for local testing and to enable local publishers. Use the following script to auto generate a full list of allowed ips for your nginx configuration
-
-```sh
-#!/bin/bash
-
-# Download the latest Cloudflare IPs
-curl https://www.cloudflare.com/ips-v4 -o ./nginx/conf.d/cf-ips.txt
-curl https://www.cloudflare.com/ips-v6 >> ./nginx/conf.d/cf-ips.txt
-
-# Generate the cloudflare.conf file
-echo "" > ./nginx/conf.d/cloudflare.conf
-echo "set_real_ip_from 127.0.0.1;" >> ./nginx/conf.d/cloudflare.conf
-echo "set_real_ip_from localhost;" >> ./nginx/conf.d/cloudflare.conf
-## add additional trusted IPs here
-## below will add cloudflare IPs to the list
-while read cf_ip; do
-    echo "set_real_ip_from $cf_ip;" >> ./nginx/conf.d/cloudflare.conf
-done < ./nginx/conf.d/cf-ips.txt
-echo "real_ip_header CF-Connecting-IP;" >> ./nginx/conf.d/cloudflare.conf
-```
-
-## Datadog support
-
-Datadog monitoring is enabled by default using dogstatsd. You'll need an agent listening on localhost:8125 to collect the custom metrics. 
+Statsd monitoring is enabled by default using the datadog library. Any statsd agent with a udp endpoint should be compatible but [Datadog](https://datadoghq.com) is recommended
