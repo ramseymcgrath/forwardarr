@@ -80,13 +80,15 @@ allowed_params_api = {
     'extended': int,
     'id': str,
     'r': str,
+    'tmdbid': int,
+    'season_folder': int,
+    'season_pack': int,
+    'ep_sort': int,
+    'type': str,
 }
 
 regex_patterns_api = {
     'apikey': r'^[A-Fa-f0-9]{24}$',
-    't': r'^[\w]+$',
-    'imdbid': r'^tt\d{7,8}$',
-    'o': r'^(json|xml)$',
 }
 
 # Allowed parameters and regex patterns for RSS route
@@ -144,30 +146,27 @@ def handle_request(indexer_name, request_type='api'):
         params = request.args.to_dict(flat=False)
         validated_params = {}
         for param, values in params.items():
-            if param in allowed_params:
-                expected_type = allowed_params[param]
-                validated_values = []
-                for value in values:
-                    try:
-                        if expected_type == int:
-                            validated_values.append(int(value))
-                        else:
-                            value = value.strip()
-                            if len(value) > 255:
-                                return Response(f"Parameter '{param}' is too long.", status=400)
-                            if param in regex_patterns and not re.match(regex_patterns[param], value):
-                                return Response(f"Parameter '{param}' has an invalid format.", status=400)
-                            validated_values.append(value)
-                    except ValueError:
-                        statsd.increment('forwardarr.validation_error', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
-                        return Response(f"Invalid value for parameter '{param}'.", status=400)
-                if len(validated_values) == 1:
-                    validated_params[param] = validated_values[0]
-                else:
-                    validated_params[param] = validated_values
-                statsd.increment('forwardarr.parameter.usage', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
+            expected_type = allowed_params[param]
+            validated_values = []
+            for value in values:
+                try:
+                    if expected_type == int:
+                        validated_values.append(int(value))
+                    else:
+                        value = value.strip()
+                        if len(value) > 255:
+                            return Response(f"Parameter '{param}' is too long.", status=400)
+                        if param in regex_patterns and not re.match(regex_patterns[param], value):
+                            return Response(f"Parameter '{param}' has an invalid format.", status=400)
+                        validated_values.append(value)
+                except ValueError:
+                    statsd.increment('forwardarr.validation_error', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
+                    return Response(f"Invalid value for parameter '{param}'.", status=400)
+            if len(validated_values) == 1:
+                validated_params[param] = validated_values[0]
             else:
-                return Response(f"Parameter '{param}' is not allowed.", status=400)
+                validated_params[param] = validated_values
+            statsd.increment('forwardarr.parameter.usage', tags=[f'parameter:{param}', f'indexer:{indexer_name}'])
 
         # API key validation and substitution
         client_apikey = validated_params.get('apikey')
