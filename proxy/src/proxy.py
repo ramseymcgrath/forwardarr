@@ -199,7 +199,7 @@ def handle_request(indexer_name, request_type='api'):
         headers = {
             'Host': urlparse(usenet_server_url).netloc,
             'Accept-Encoding': 'gzip, deflate',
-            'User-Agent': 'YourCustomUserAgent/1.0',
+            'User-Agent': request.headers.get('User-Agent', 'ForwardArr Proxy'),
         }
 
         app.logger.debug(f"Request headers: {headers}")
