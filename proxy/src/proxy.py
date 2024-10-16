@@ -186,8 +186,10 @@ def handle_request(indexer_name, request_type='api'):
                 statsd.increment('forwardarr.access_denied', tags=[f'indexer:{indexer_name}'])
                 return Response("Access denied for this indexer.", status=403)
             indexer_key = client_keys[indexer_name]['key']
-            if client_keys[indexer_name]['extra_params']:
+            try:
                 validated_params.update(client_keys[indexer_name]['extra_params'])
+            except KeyError:
+                pass
         else:
             return Response("API key is required.", status=400)
 
