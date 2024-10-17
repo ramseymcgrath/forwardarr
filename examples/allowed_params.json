@@ -1,0 +1,11 @@
+{
+    "rss" : {
+        "genre": "str",
+        "author": "str",
+        "artist": "str",
+        "album": "str",
+        "track": "str",
+        "publisher": "str"
+    },
+    "api" : {}
+}
