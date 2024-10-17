@@ -13,6 +13,7 @@ COPY ./proxy/src/proxy.py /app/proxy.py
 EXPOSE 8080
 ENV INDEXER_URLS_JSON=/config/indexer_urls.json
 ENV API_KEYS_FILE=/config/api_keys.json
+ENV PARAMETERS_CONFIG_FILE = /config/allowed_parameters.json
 ENV DD_AGENT_HOST=localhost
 ENV DD_DOGSTATSD_PORT=8125
 
