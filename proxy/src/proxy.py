@@ -67,7 +67,7 @@ allowed_params_api_imported = {}
 allowed_params_rss_imported = {}
 # Load parameters configuration if available
 try:
-    with open(INDEXER_URLS_JSON, "r") as file:
+    with open(PARAMETERS_CONFIG_FILE, "r") as file:
         allowed_params = json.load(file)
         allowed_params_api = allowed_params.get("api", {})
         allowed_params_rss_imported = allowed_params.get("rss", {})
