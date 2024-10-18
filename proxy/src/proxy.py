@@ -31,9 +31,7 @@ initialize(**options)
 # Configuration file paths
 INDEXER_URLS_JSON = os.environ.get("INDEXER_URLS_JSON", "/config/indexer_config.json")
 API_KEYS_FILE = os.environ.get("API_KEYS_FILE", "/config/api_keys.json")
-PARAMETERS_CONFIG_FILE = os.environ.get(
-    "PARAMETERS_CONFIG_FILE", "/config/parameters.json"
-)
+PARAMETERS_CONFIG_FILE = os.environ.get("PARAMETERS_CONFIG_FILE", "/config/parameters.json")
 
 # Load API keys mapping
 try:
@@ -63,14 +61,10 @@ except Exception as e:
     app.logger.error(f"Error loading indexer URLs from '{INDEXER_URLS_JSON}': {e}")
     sys.exit(1)
 
-allowed_params_api_imported = {}
-allowed_params_rss_imported = {}
 # Load parameters configuration if available
 try:
     with open(PARAMETERS_CONFIG_FILE, "r") as file:
         allowed_params = json.load(file)
-        allowed_params_api = allowed_params.get("api", {})
-        allowed_params_rss_imported = allowed_params.get("rss", {})
 except FileNotFoundError:
     app.logger.error(
         f"Parameters configuration file not found: '{PARAMETERS_CONFIG_FILE}'"
@@ -81,7 +75,8 @@ except Exception as e:
     app.logger.error(
         f"Error loading parameters configuration from '{PARAMETERS_CONFIG_FILE}': {e}"
     )
-
+allowed_params_api = allowed_params.get("api", {})
+allowed_params_rss_imported = allowed_params.get("rss", {})
 # Indexer name validation pattern
 indexer_name_pattern = r"^\w+$"
 
@@ -92,11 +87,7 @@ regex_patterns_api = {
 
 # Allowed parameters and regex patterns for RSS route
 allowed_params_rss = allowed_params_api.copy(allowed_params_rss_imported)
-allowed_params_rss.update()
-
 regex_patterns_rss = regex_patterns_api.copy()
-regex_patterns_rss.update({})
-
 
 def handle_request(indexer_name, request_type="api"):
     start_time = time.time()
