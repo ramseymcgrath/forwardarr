@@ -86,7 +86,7 @@ regex_patterns_api = {
 }
 
 # Allowed parameters and regex patterns for RSS route
-allowed_params_rss = allowed_params_api.copy(allowed_params_rss_imported)
+allowed_params_rss = allowed_params_rss_imported.copy()
 regex_patterns_rss = regex_patterns_api.copy()
 allowed_params = allowed_params_api.copy()
 regex_patterns = regex_patterns_api.copy()
