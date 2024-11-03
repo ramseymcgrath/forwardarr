@@ -233,15 +233,15 @@ def handle_request(indexer_name, request_type="api"):
             indexer_query.update({user_id_param: indexer_key})
         # Add user agent to request headers if specified
         try:
-            request.headers["User-Agent"] = client_keys[indexer_name]["user_agent"]
+            request_user_agent = client_keys[indexer_name]["user_agent"]
         # Otherwise, use the requestor user agent if available
         except:
-            request.headers["User-Agent"] = request.headers.get("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15")
+            request_user_agent = request.headers.get("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15")
         # Prepare headers
         headers = {
             "Host": urlparse(usenet_server_url).netloc,
             "Accept-Encoding": "gzip, deflate",
-            "User-Agent": request.headers["User-Agent"],
+            "User-Agent": request_user_agent,
             "Connection": "keep-alive",
         }
 
