@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY ./proxy/src/requirements.txt ./requirements.txt
+RUN python -m pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 RUN mkdir -p /config
 COPY ./proxy/src/proxy.py /app/proxy.py
