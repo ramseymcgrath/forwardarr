@@ -19,5 +19,7 @@ ENV API_KEYS_FILE=/config/api_keys.json
 ENV PARAMETERS_CONFIG_FILE = /config/allowed_parameters.json
 ENV DD_AGENT_HOST=localhost
 ENV DD_DOGSTATSD_PORT=8125
+RUN pip install "ddtrace>=2.9.3"
+ENV DD_IAST_ENABLED=true
 
-CMD ["python", "proxy.py"]
+CMD ["ddtrace-run", "python", "proxy.py"]
