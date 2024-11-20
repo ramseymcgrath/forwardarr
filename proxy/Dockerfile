@@ -1,6 +1,6 @@
-FROM python:3.13-slim
+FROM rust:bullseye
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl python\
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -19,8 +19,6 @@ ENV DD_APPSEC_ENABLED=true
 ENV DD_APPSEC_SCA_ENABLED=true
 
 COPY ./proxy/src/requirements.txt ./requirements.txt
-RUN curl --proto '=https' --tlsv1.2 -sSf -y https://sh.rustup.rs | sh
-ENV PATH /root/.cargo/bin:$PATH
 RUN python -m pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 RUN mkdir -p /config
