@@ -19,5 +19,11 @@ ENV PARAMETERS_CONFIG_FILE = /config/allowed_parameters.json
 ENV DD_AGENT_HOST=localhost
 ENV DD_DOGSTATSD_PORT=8125
 ENV DD_IAST_ENABLED=true
+ENV DD_SERVICE=forwardarr
+ENV DD_ENV=prod
+ENV DD_LOGS_INJECTION=true 
+ENV DD_PROFILING_ENABLED=true
+ENV DD_APPSEC_ENABLED=true
+ENV DD_APPSEC_SCA_ENABLED=true
 
 CMD ["ddtrace-run", "python", "proxy.py"]
