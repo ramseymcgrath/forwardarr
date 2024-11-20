@@ -1,18 +1,9 @@
 FROM python:3.13-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-
-COPY ./proxy/src/requirements.txt ./requirements.txt
-RUN curl --proto '=https' --tlsv1.2 -sSf -y https://sh.rustup.rs | sh
-ENV PATH /root/.cargo/bin:$PATH
-RUN python -m pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
-RUN mkdir -p /config
-COPY ./proxy/src/proxy.py /app/proxy.py
 EXPOSE 8080
 ENV INDEXER_URLS_JSON=/config/indexer_urls.json
 ENV API_KEYS_FILE=/config/api_keys.json
@@ -26,5 +17,13 @@ ENV DD_LOGS_INJECTION=true
 ENV DD_PROFILING_ENABLED=true
 ENV DD_APPSEC_ENABLED=true
 ENV DD_APPSEC_SCA_ENABLED=true
+
+COPY ./proxy/src/requirements.txt ./requirements.txt
+RUN curl --proto '=https' --tlsv1.2 -sSf -y https://sh.rustup.rs | sh
+ENV PATH /root/.cargo/bin:$PATH
+RUN python -m pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+RUN mkdir -p /config
+COPY ./proxy/src/proxy.py /app/proxy.py
 
 CMD ["ddtrace-run", "python", "proxy.py"]
