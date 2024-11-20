@@ -7,7 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY ./proxy/src/requirements.txt ./requirements.txt
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+RUN curl --proto '=https' --tlsv1.2 -sSf -y https://sh.rustup.rs | sh
+ENV PATH /root/.cargo/bin:$PATH
 RUN python -m pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 RUN mkdir -p /config
