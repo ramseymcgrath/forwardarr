@@ -38,13 +38,13 @@ try:
     with open(API_KEYS_FILE, "r") as file:
         client_api_key_map = json.load(file)
 except FileNotFoundError:
-    app.logger.error(f"API keys file not found: {API_KEYS_FILE}")
+    app.logger.error("API keys file not found %s", API_KEYS_FILE)
     sys.exit(1)
 except json.JSONDecodeError as e:
-    app.logger.error(f"Error decoding JSON from {API_KEYS_FILE}: {e}")
+    app.logger.error("Error decoding JSON from %s", API_KEYS_FILE)
     sys.exit(1)
 except Exception as e:
-    app.logger.error(f"Error loading API keys from {API_KEYS_FILE}: {e}")
+    app.logger.error("Error loading API keys from %s", API_KEYS_FILE)
     sys.exit(1)
 
 # Load indexer URLs mapping
@@ -52,13 +52,13 @@ try:
     with open(INDEXER_URLS_JSON, "r") as file:
         indexer_name_map = json.load(file)
 except FileNotFoundError:
-    app.logger.error(f"Indexer URLs file not found: {INDEXER_URLS_JSON}")
+    app.logger.error("Indexer URLs file not found: %s", INDEXER_URLS_JSON)
     sys.exit(1)
 except json.JSONDecodeError as e:
-    app.logger.error(f"Error decoding JSON from {INDEXER_URLS_JSON}: {e}")
+    app.logger.error("Error decoding JSON from %s", INDEXER_URLS_JSON)
     sys.exit(1)
 except Exception as e:
-    app.logger.error(f"Error loading indexer URLs from {INDEXER_URLS_JSON}: {e}")
+    app.logger.error("Error loading indexer URLs from %s", INDEXER_URLS_JSON)
     sys.exit(1)
 
 # Load parameters configuration if available
@@ -67,13 +67,13 @@ try:
         allowed_params = json.load(file)
 except FileNotFoundError:
     app.logger.error(
-        f"Parameters configuration file not found: {PARAMETERS_CONFIG_FILE}"
+        "Parameters configuration file not found: %s: %s", PARAMETERS_CONFIG_FILE, e
     )
 except json.JSONDecodeError as e:
-    app.logger.error(f"Error decoding JSON from {PARAMETERS_CONFIG_FILE}: {e}")
+    app.logger.error("Error decoding JSON from %s: %s", PARAMETERS_CONFIG_FILE, e)
 except Exception as e:
     app.logger.error(
-        f"Error loading parameters configuration from {PARAMETERS_CONFIG_FILE}: {e}"
+        "Error loading parameters configuration from: %s: %s", PARAMETERS_CONFIG_FILE, e
     )
 allowed_params_api = allowed_params.get("api", {})
 allowed_params_rss_imported = allowed_params.get("rss", {})
@@ -266,21 +266,21 @@ def handle_request(indexer_name, request_type="api"):
             statsd.increment(
                 "forwardarr.upstream.timeout", tags=[f"indexer:{indexer_name}"]
             )
-            app.logger.error(f"Timeout when contacting indexer {indexer_name}.")
+            app.logger.error("Timeout when contacting indexer %s.", indexer_name)
             return Response("Indexing server timed out.", status=504)
         except requests.exceptions.ConnectionError:
             statsd.increment(
                 "forwardarr.upstream.connection_error", tags=[f"indexer:{indexer_name}"]
             )
             app.logger.error(
-                f"Connection error when contacting indexer {indexer_name}."
+                "Connection error when contacting indexer %s.", indexer_name
             )
             return Response("Error connecting to the indexing server.", status=502)
         except requests.exceptions.RequestException as e:
             statsd.increment(
                 "forwardarr.upstream.error", tags=[f"indexer:{indexer_name}"]
             )
-            app.logger.error(f"HTTP request failed for indexer {indexer_name}: {e}")
+            app.logger.error("HTTP request failed for indexer %s: %s", indexer_name, e)
             return Response("Error contacting the indexer.", status=502)
 
         upstream_duration = time.time() - upstream_start_time
@@ -335,7 +335,7 @@ def handle_request(indexer_name, request_type="api"):
                 for chunk in response.raw.stream(decode_content=False):
                     yield chunk
             except Exception as e:
-                app.logger.error(f"Error streaming response: {e}")
+                app.logger.error("Error streaming response: %s", e)
 
         ## If the request is a grab request, we need to return the response headers
         if is_grab:
@@ -362,8 +362,8 @@ def handle_request(indexer_name, request_type="api"):
                     ("Content-Disposition", 'attachment; filename="download.nzb"')
                 )
 
-            app.logger.debug(f"Response headers to client: {response_headers}")
-            app.logger.debug(f"Response status code: {response.status_code}")
+            app.logger.debug("Response headers to client: %s", response_headers)
+            app.logger.debug("Response status code: %s", response.status_code)
             statsd.increment(
                 "forwardarr.grab_request_response.count",
                 tags=[f"grab_request:true", f"indexer:{indexer_name}"],
@@ -381,8 +381,8 @@ def handle_request(indexer_name, request_type="api"):
                 "forwardarr.other_request_response.count",
                 tags=[f"grab_request:false", f"indexer:{indexer_name}"],
             )
-            app.logger.debug(f"Response headers to client: {response_headers}")
-            app.logger.debug(f"Response status code: {response.status_code}")
+            app.logger.debug("Response headers to client: %s", response_headers)
+            app.logger.debug("Response status code: %s", response.status_code)
 
             return Response(generate(), response.status_code, response_headers)
 
@@ -393,7 +393,7 @@ def handle_request(indexer_name, request_type="api"):
             tags=[f"indexer:{indexer_name}", f"exception_type:{exception_type}"],
         )
         app.logger.error(
-            f"Unhandled exception for indexer {indexer_name}: {e}\n{traceback.format_exc()}"
+            "Unhandled exception for indexer %s: %s\n{traceback.format_exc()}", indexer_name, e
         )
         return Response("Internal server error.", status=500)
 
