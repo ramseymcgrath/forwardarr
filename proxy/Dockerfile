@@ -16,7 +16,7 @@ ENV DD_APPSEC_SCA_ENABLED=true
 COPY ./proxy/src/requirements.txt ./requirements.txt
 
 RUN apt-get update && \ 
- apt-get install -y --no-install-recommends ca-certificates curl python python3-pip && \
+ apt-get install -y --no-install-recommends ca-certificates curl python3 python3-pip && \
  rm -rf /var/lib/apt/lists/* && \
  pip install --no-cache-dir -r requirements.txt && \
  mkdir /config
