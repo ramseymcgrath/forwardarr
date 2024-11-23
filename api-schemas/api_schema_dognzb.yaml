@@ -1,0 +1,448 @@
+openapi: 3.0.3
+info:
+  title: newznab Usenet Searching Web API
+  version: v1.0-NNTmux
+  description: |
+    This is the OpenAPI specification for the newznab Usenet Searching Web API. It includes all functions as per the provided documentation.
+
+servers:
+  - url: https://indexers.indexerglue.com
+    description: Default server
+    variables:
+      servername:
+        default: api
+
+paths:
+  /dognzb/api:
+    get:
+      summary: Execute API functions
+      description: Execute various API functions based on the 't' query parameter.
+      parameters:
+        - in: path
+          name: indexer
+          required: true
+          schema:
+            type: string
+          description: The indexer name (e.g., 'dognzb', 'scenenzbs', 'drunkenslug', 'dognzb').
+        - in: query
+          name: t
+          required: true
+          schema:
+            type: string
+            enum: [caps, register, search, tvsearch, movie, details]
+          description: Specifies the API function to execute.
+        - in: query
+          name: apikey
+          required: false
+          schema:
+            type: string
+          description: User's API key as provided by the service provider.
+        - in: query
+          name: o
+          required: false
+          schema:
+            type: string
+            enum: [json, xml]
+            default: xml
+          description: Output format, either 'json' or 'xml'. Default is 'xml'.
+
+        # Function-specific parameters
+        - in: query
+          name: email
+          required: false
+          schema:
+            type: string
+            format: email
+          description: Required for 't=register'. A valid email address.
+        - in: query
+          name: q
+          required: false
+          schema:
+            type: string
+          description: Search query. Used in 'search', 'tvsearch', 'movie' functions.
+        - in: query
+          name: cat
+          required: false
+          schema:
+            type: string
+          description: Categories to search, delimited by commas.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+          description: Maximum number of items to return.
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+          description: Offset for pagination.
+        - in: query
+          name: extended
+          required: false
+          schema:
+            type: integer
+            enum: [0, 1]
+            default: 0
+          description: Return extended information in the search results.
+        - in: query
+          name: del
+          required: false
+          schema:
+            type: integer
+            enum: [0, 1]
+            default: 0
+          description: Delete the item from a user's cart on download.
+        - in: query
+          name: maxage
+          required: false
+          schema:
+            type: integer
+          description: Only return results posted in the last 'x' days.
+        - in: query
+          name: rid
+          required: false
+          schema:
+            type: string
+          description: TVRage ID for 'tvsearch'.
+        - in: query
+          name: tvdbid
+          required: false
+          schema:
+            type: string
+          description: TVDB ID for 'tvsearch'.
+        - in: query
+          name: season
+          required: false
+          schema:
+            type: string
+          description: Season number for 'tvsearch'.
+        - in: query
+          name: ep
+          required: false
+          schema:
+            type: string
+          description: Episode number for 'tvsearch'.
+        - in: query
+          name: imdbid
+          required: false
+          schema:
+            type: string
+          description: IMDB ID for 'movie' and 'tvsearch'.
+        - in: query
+          name: guid
+          required: false
+          schema:
+            type: string
+          description: GUID of the item for 'details'.
+
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/CAPSResponse'
+                  - $ref: '#/components/schemas/RegisterResponse'
+                  - $ref: '#/components/schemas/SearchResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
+            application/xml:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/CAPSResponse'
+                  - $ref: '#/components/schemas/RegisterResponse'
+                  - $ref: '#/components/schemas/SearchResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    CAPSResponse:
+      type: object
+      properties:
+        caps:
+          type: object
+          properties:
+            server:
+              type: object
+              properties:
+                version:
+                  type: string
+                title:
+                  type: string
+                strapline:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                url:
+                  type: string
+                  format: uri
+                image:
+                  type: string
+                  format: uri
+              required:
+                - version
+                - title
+                - strapline
+                - email
+                - url
+                - image
+            limits:
+              type: object
+              properties:
+                max:
+                  type: integer
+                default:
+                  type: integer
+              required:
+                - max
+                - default
+            retention:
+              type: object
+              properties:
+                days:
+                  type: integer
+              required:
+                - days
+            registration:
+              type: object
+              properties:
+                available:
+                  type: string
+                  enum: [yes, no]
+                open:
+                  type: string
+                  enum: [yes, no]
+              required:
+                - available
+                - open
+            searching:
+              type: object
+              properties:
+                search:
+                  type: object
+                  properties:
+                    available:
+                      type: string
+                      enum: [yes, no]
+                    supportedParams:
+                      type: string
+                  required:
+                    - available
+                    - supportedParams
+                tv-search:
+                  type: object
+                  properties:
+                    available:
+                      type: string
+                      enum: [yes, no]
+                    supportedParams:
+                      type: string
+                  required:
+                    - available
+                    - supportedParams
+                movie-search:
+                  type: object
+                  properties:
+                    available:
+                      type: string
+                      enum: [yes, no]
+                    supportedParams:
+                      type: string
+                  required:
+                    - available
+                    - supportedParams
+                audio-search:
+                  type: object
+                  properties:
+                    available:
+                      type: string
+                      enum: [yes, no]
+                    supportedParams:
+                      type: string
+                  required:
+                    - available
+                    - supportedParams
+              required:
+                - search
+                - tv-search
+                - movie-search
+                - audio-search
+            categories:
+              type: object
+              properties:
+                category:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      description:
+                        type: string
+                      subcat:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            description:
+                              type: string
+                          required:
+                            - id
+                            - name
+                    required:
+                      - id
+                      - name
+              required:
+                - category
+          required:
+            - server
+            - limits
+            - retention
+            - registration
+            - searching
+            - categories
+      required:
+        - caps
+
+    RegisterResponse:
+      oneOf:
+        - type: object
+          properties:
+            register:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                apikey:
+                  type: string
+              required:
+                - username
+                - password
+                - apikey
+          required:
+            - register
+        - $ref: '#/components/schemas/ErrorResponse'
+
+    SearchResponse:
+      type: object
+      properties:
+        channel:
+          type: object
+          properties:
+            title:
+              type: string
+            description:
+              type: string
+            response:
+              type: object
+              properties:
+                offset:
+                  type: integer
+                total:
+                  type: integer
+              required:
+                - offset
+                - total
+            item:
+              type: array
+              items:
+                $ref: '#/components/schemas/Item'
+          required:
+            - title
+            - description
+            - response
+      required:
+        - channel
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            description:
+              type: string
+          required:
+            - code
+            - description
+      required:
+        - error
+
+    Item:
+      type: object
+      properties:
+        title:
+          type: string
+        guid:
+          type: string
+        link:
+          type: string
+          format: uri
+        comments:
+          type: string
+          format: uri
+        pubDate:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        enclosure:
+          type: object
+          properties:
+            url:
+              type: string
+              format: uri
+            length:
+              type: string
+            type:
+              type: string
+          required:
+            - url
+            - length
+            - type
+        attr:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attribute'
+      required:
+        - title
+        - guid
+        - link
+        - pubDate
+        - category
+        - enclosure
+
+    Attribute:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+      required:
+        - name
+        - value
+
