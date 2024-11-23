@@ -1,0 +1,318 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Newznab API Combined Response Schema",
+    "description": "This schema validates responses from the newznab API, including CAPS, REGISTER, SEARCH, TV-SEARCH, MOVIE-SEARCH, DETAILS, and Error responses.",
+    "oneOf": [
+      { "$ref": "#/definitions/CAPSResponse" },
+      { "$ref": "#/definitions/RegisterResponse" },
+      { "$ref": "#/definitions/SearchResponse" },
+      { "$ref": "#/definitions/TVSearchResponse" },
+      { "$ref": "#/definitions/MovieSearchResponse" },
+      { "$ref": "#/definitions/DetailsResponse" },
+      { "$ref": "#/definitions/ErrorResponse" }
+    ],
+    "definitions": {
+      "CAPSResponse": {
+        "type": "object",
+        "properties": {
+          "caps": {
+            "type": "object",
+            "properties": {
+              "server": {
+                "type": "object",
+                "properties": {
+                  "version": { "type": "string" },
+                  "title": { "type": "string" },
+                  "strapline": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "url": { "type": "string", "format": "uri" },
+                  "image": { "type": "string", "format": "uri" }
+                },
+                "required": ["version", "title", "strapline", "email", "url", "image"]
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "max": { "type": "integer" },
+                  "default": { "type": "integer" }
+                },
+                "required": ["max", "default"]
+              },
+              "retention": {
+                "type": "object",
+                "properties": {
+                  "days": { "type": "integer" }
+                },
+                "required": ["days"]
+              },
+              "registration": {
+                "type": "object",
+                "properties": {
+                  "available": { "type": "string", "enum": ["yes", "no"] },
+                  "open": { "type": "string", "enum": ["yes", "no"] }
+                },
+                "required": ["available", "open"]
+              },
+              "searching": {
+                "type": "object",
+                "properties": {
+                  "search": {
+                    "type": "object",
+                    "properties": {
+                      "available": { "type": "string", "enum": ["yes", "no"] },
+                      "supportedParams": { "type": "string" }
+                    },
+                    "required": ["available", "supportedParams"]
+                  },
+                  "tv-search": {
+                    "type": "object",
+                    "properties": {
+                      "available": { "type": "string", "enum": ["yes", "no"] },
+                      "supportedParams": { "type": "string" }
+                    },
+                    "required": ["available", "supportedParams"]
+                  },
+                  "movie-search": {
+                    "type": "object",
+                    "properties": {
+                      "available": { "type": "string", "enum": ["yes", "no"] },
+                      "supportedParams": { "type": "string" }
+                    },
+                    "required": ["available", "supportedParams"]
+                  },
+                  "audio-search": {
+                    "type": "object",
+                    "properties": {
+                      "available": { "type": "string", "enum": ["yes", "no"] },
+                      "supportedParams": { "type": "string" }
+                    },
+                    "required": ["available", "supportedParams"]
+                  }
+                },
+                "required": ["search", "tv-search", "movie-search", "audio-search"]
+              },
+              "categories": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" },
+                        "description": { "type": "string" },
+                        "subcat": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": { "type": "string" },
+                              "name": { "type": "string" },
+                              "description": { "type": "string" }
+                            },
+                            "required": ["id", "name"]
+                          }
+                        }
+                      },
+                      "required": ["id", "name"]
+                    }
+                  }
+                },
+                "required": ["category"]
+              }
+            },
+            "required": [
+              "server",
+              "limits",
+              "retention",
+              "registration",
+              "searching",
+              "categories"
+            ]
+          }
+        },
+        "required": ["caps"]
+      },
+      "RegisterResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "register": {
+                "type": "object",
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" },
+                  "apikey": { "type": "string" }
+                },
+                "required": ["username", "password", "apikey"]
+              }
+            },
+            "required": ["register"]
+          },
+          { "$ref": "#/definitions/ErrorResponse" }
+        ]
+      },
+      "SearchResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "response": {
+                    "type": "object",
+                    "properties": {
+                      "offset": { "type": "integer" },
+                      "total": { "type": "integer" }
+                    },
+                    "required": ["offset", "total"]
+                  },
+                  "item": {
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/Item" }
+                  }
+                },
+                "required": ["title", "description", "response"]
+              }
+            },
+            "required": ["channel"]
+          },
+          { "$ref": "#/definitions/ErrorResponse" }
+        ]
+      },
+      "TVSearchResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "response": {
+                    "type": "object",
+                    "properties": {
+                      "offset": { "type": "integer" },
+                      "total": { "type": "integer" }
+                    },
+                    "required": ["offset", "total"]
+                  },
+                  "item": {
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/Item" }
+                  }
+                },
+                "required": ["title", "description", "response"]
+              }
+            },
+            "required": ["channel"]
+          },
+          { "$ref": "#/definitions/ErrorResponse" }
+        ]
+      },
+      "MovieSearchResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "response": {
+                    "type": "object",
+                    "properties": {
+                      "offset": { "type": "integer" },
+                      "total": { "type": "integer" }
+                    },
+                    "required": ["offset", "total"]
+                  },
+                  "item": {
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/Item" }
+                  }
+                },
+                "required": ["title", "description", "response"]
+              }
+            },
+            "required": ["channel"]
+          },
+          { "$ref": "#/definitions/ErrorResponse" }
+        ]
+      },
+      "DetailsResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "object",
+                "properties": {
+                  "item": { "$ref": "#/definitions/Item" }
+                },
+                "required": ["item"]
+              }
+            },
+            "required": ["channel"]
+          },
+          { "$ref": "#/definitions/ErrorResponse" }
+        ]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "description": { "type": "string" }
+            },
+            "required": ["code", "description"]
+          }
+        },
+        "required": ["error"]
+      },
+      "Item": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "guid": { "type": "string" },
+          "link": { "type": "string", "format": "uri" },
+          "comments": { "type": "string", "format": "uri" },
+          "pubDate": { "type": "string" },
+          "category": { "type": "string" },
+          "description": { "type": "string" },
+          "enclosure": {
+            "type": "object",
+            "properties": {
+              "url": { "type": "string", "format": "uri" },
+              "length": { "type": "string" },
+              "type": { "type": "string" }
+            },
+            "required": ["url", "length", "type"]
+          },
+          "attr": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/Attribute" }
+          }
+        },
+        "required": ["title", "guid", "link", "pubDate", "category", "enclosure"]
+      },
+      "Attribute": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "value": { "type": "string" }
+        },
+        "required": ["name", "value"]
+      }
+    }
+  }
+  
