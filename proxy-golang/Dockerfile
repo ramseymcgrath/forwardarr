@@ -16,13 +16,16 @@ RUN CGO_ENABLED=0 go build -o proxyserver .
 FROM alpine:3.18
 RUN apk --no-cache add ca-certificates
 
-# Create a non-root user (optional)
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
-
 WORKDIR /app
 COPY --from=builder /app/proxyserver /app/proxyserver
 
 EXPOSE 8080
+
+ENV INDEXER_URLS_JSON=/config/indexer_urls.json
+ENV API_KEYS_FILE=/config/api_keys.json
+ENV PARAMETERS_CONFIG_FILE = /config/allowed_parameters.json
+ENV DD_AGENT_HOST=localhost
+ENV DD_DOGSTATSD_PORT=8125
+ENV DD_IAST_ENABLED=true
 
 CMD ["/app/proxyserver"]
