@@ -4,11 +4,11 @@ FROM golang:1.20 as builder
 WORKDIR /app
 
 # Copy go.mod and go.sum first for caching
-COPY src/go.mod src/go.sum ./
+COPY ./proxy-golang/src/go.mod src/go.sum ./
 RUN go mod download
 
 # Copy the actual source
-COPY src/main.go ./main.go
+COPY ./proxy-golang/src/main.go ./main.go
 
 # Build the binary
 RUN CGO_ENABLED=0 go build -o proxyserver .

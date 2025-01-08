@@ -8,9 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p ${FUNCTION_DIR}
-COPY ./proxy/src/requirements.txt ${FUNCTION_DIR}/requirements.txt
+COPY ./proxy-python/src/requirements.txt ${FUNCTION_DIR}/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt --target ${FUNCTION_DIR} awslambdaric
-COPY ./proxy/src/proxy.py ${FUNCTION_DIR}/proxy.py
+COPY ./proxy-python/src/proxy.py ${FUNCTION_DIR}/proxy.py
 FROM python:3.12-slim
 
 EXPOSE 8080
