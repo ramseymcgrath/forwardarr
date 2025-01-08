@@ -1,2 +1,4 @@
 examples/indexer_urls.json
 examples/user_keys.json
+examples/user_keys.json.example
+examples/indexer_urls.json.example
