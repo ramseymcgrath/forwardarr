@@ -1,27 +1,93 @@
 {
-  "12345678abcdef12345678abc": { 
-    "indexer1":{
-        "key" : "user1_key_here"
+  "a3f9c8b2e6d4f1a5c7e9b0d3": { 
+    "abnzb":{
+        "key" : "7fd5d993dd1c3948260a15d205cd610a"
     },
-    "indexer2" : {
-      "key" : "user1_key_here",
-      "extra_params" : {
-        "uid" : 12345
-      }
+    "althub" : {
+      "key" : "2af052e1478c92d9409a0f6c564fdb31"
     },
-    "user": "user1"
+    "drunkenslug" : {
+      "key" : "49ba8842259d7145ca3f49daa2784f52"
+    },
+    "nzbfinder" : {
+      "key" : "2aa6b0961d03b89630d9c1177238e57b"
+    }
+    "scenenzbs" : {
+      "key" : "8b4fcb636080b9fb0388cef0e33e4954"
+    },
+    "nzbplanet" : {
+      "key" : "ac5fbe833be0f6c1ffea5b852c54cac1"
+    },
+    "digitalcarnage" : {
+      "key" : "468ec060857dc418a19e122bcaff9b57"
+    },
+    "dognzb" : {
+      "key" : "82886a8ed8a84030776d42d5c637488e"
+    },
+    "squareeyed" : {
+      "key" : "9e3b09194385a2ac5862d49cc75499c3"
+    },
+    "user": "paul"
   },
-  "abcdef12345678abc12345678": {
-    "indexer1":{
-        "key" : "user2_key_here"
+  "f0e1d2c3b4a5968778695a4b": {
+    "abnzb":{
+        "key" : "7fd5d993dd1c3948260a15d205cd610a"
     },
-    "indexer2" : {
-      "key" : "user2_key_here",
-      "extra_params" : {
-        "uid" : 5678
-      }
+    "althub" : {
+      "key" : "2af052e1478c92d9409a0f6c564fdb31"
     },
-    "user": "user2"
+    "drunkenslug" : {
+      "key" : "49ba8842259d7145ca3f49daa2784f52"
+    },
+    "nzbfinder" : {
+      "key" : "2aa6b0961d03b89630d9c1177238e57b"
+    }
+    "scenenzbs" : {
+      "key" : "8b4fcb636080b9fb0388cef0e33e4954"
+    },
+    "nzbplanet" : {
+      "key" : "ac5fbe833be0f6c1ffea5b852c54cac1"
+    },
+    "digitalcarnage" : {
+      "key" : "468ec060857dc418a19e122bcaff9b57"
+    },
+    "dognzb" : {
+      "key" : "82886a8ed8a84030776d42d5c637488e"
+    },
+    "squareeyed" : {
+      "key" : "9e3b09194385a2ac5862d49cc75499c3"
+    },
+    "user": "vinay"
+  },
+  "a3f9c8b2e6d4f1a5c7e9b0d3": {
+    "abnzb":{
+      "key" : "7fd5d993dd1c3948260a15d205cd610a"
+    },
+    "althub" : {
+      "key" : "2af052e1478c92d9409a0f6c564fdb31"
+    },
+    "drunkenslug" : {
+      "key" : "49ba8842259d7145ca3f49daa2784f52"
+    },
+    "nzbfinder" : {
+      "key" : "2aa6b0961d03b89630d9c1177238e57b"
+    }
+    "scenenzbs" : {
+      "key" : "8b4fcb636080b9fb0388cef0e33e4954"
+    },
+    "nzbplanet" : {
+      "key" : "ac5fbe833be0f6c1ffea5b852c54cac1"
+    },
+    "digitalcarnage" : {
+      "key" : "468ec060857dc418a19e122bcaff9b57"
+    },
+    "dognzb" : {
+      "key" : "82886a8ed8a84030776d42d5c637488e"
+    },
+    "squareeyed" : {
+      "key" : "9e3b09194385a2ac5862d49cc75499c3"
+    },
+    "user": "ramsey"
   }
-  }
+}
   

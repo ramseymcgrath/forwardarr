@@ -17,3 +17,7 @@ updates:
     directory: "/proxy"
     schedule:
       interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/proxy-golang"
+    schedule:
+      interval: "weekly"
