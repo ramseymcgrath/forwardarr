@@ -116,18 +116,22 @@ func init() {
 
 func main() {
 	r := mux.NewRouter()
+	log.Printf("Starting ForwardArr proxy server\n")
 
 	r.HandleFunc("/{indexer_name}/api", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Handling API request\n")
 		handleProxyRequest(w, r, "api")
 	}).Methods("GET")
 
 	r.HandleFunc("/{indexer_name}/rss", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Handling RSS request\n")
 		handleProxyRequest(w, r, "rss")
 	}).Methods("GET")
 
 	// If `/get` is just an alias for the same logic as "api" (like in your Python script),
 	// we’ll do the same:
 	r.HandleFunc("/{indexer_name}/get", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Handling GET request\n")
 		handleProxyRequest(w, r, "api")
 	}).Methods("GET")
 
@@ -148,23 +152,27 @@ func handleProxyRequest(w http.ResponseWriter, r *http.Request, requestType stri
 
 	vars := mux.Vars(r)
 	indexerName := vars["indexer_name"]
+	log.Printf("Handling request for indexer: %s\n", indexerName)
 
 	incrementStat("forwardarr."+requestType+"_request.count", []string{"indexer:" + indexerName})
 
 	// Validate indexer
 	if !indexerNamePattern.MatchString(indexerName) {
+		log.Printf("Invalid indexer name format: %s\n", indexerName)
 		http.Error(w, "Invalid indexer name format.", http.StatusBadRequest)
 		return
 	}
 
 	indexerInfo, ok := indexerNameMap[indexerName]
 	if !ok {
+		log.Printf("Indexer '%s' not found.\n", indexerName)
 		http.Error(w, fmt.Sprintf("Indexer '%s' not found.", indexerName), http.StatusNotFound)
 		return
 	}
 
 	usenetServerURL := indexerInfo.URL
 	if usenetServerURL == "" {
+		log.Printf("Indexer '%s' missing 'url' config.\n", indexerName)
 		http.Error(w, "Indexer missing 'url' config.", http.StatusInternalServerError)
 		return
 	}
@@ -221,6 +229,7 @@ func handleProxyRequest(w http.ResponseWriter, r *http.Request, requestType stri
 		http.Error(w, "API key is required.", http.StatusBadRequest)
 		return
 	}
+	log.Printf("Client API key: %s\n", clientAPIKey)
 	_ = validated // at this point validated includes "apikey" among others
 
 	// Look up the mapping for that client key
@@ -230,6 +239,7 @@ func handleProxyRequest(w http.ResponseWriter, r *http.Request, requestType stri
 		http.Error(w, "Invalid API key.", http.StatusForbidden)
 		return
 	}
+	log.Printf("Client API key found.\n")
 
 	userNameAny, hasUser := clientKeyEntry["user"]
 	userName := ""
