@@ -1,15 +1,18 @@
-FROM python:3.9-slim
+ARG FUNCTION_DIR
+
+FROM python:3.8-slim
+ARG FUNCTION_DIR
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+RUN mkdir -p ${FUNCTION_DIR}
+COPY ./proxy/src/requirements.txt ${FUNCTION_DIR}/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt --target ${FUNCTION_DIR} awslambdaric
+COPY ./proxy/src/proxy.py ${FUNCTION_DIR}/proxy.py
+FROM python:3.12-slim
 
-COPY ./proxy/src/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-RUN mkdir -p /config
-COPY ./proxy/src/proxy.py /app/proxy.py
 EXPOSE 8080
 ENV INDEXER_URLS_JSON=/config/indexer_urls.json
 ENV API_KEYS_FILE=/config/api_keys.json

@@ -1,11 +1,38 @@
 {
-    "indexer1" : {
-        "url" : "https://indexer1.com",
+    "abnzbd" : {
+        "url" : "https://abnzb.com",
         "api_param" : "apikey"
     },
-    "indexer2" : {
-        "url" : "https://indexer2.com",
-        "api_param" : "userid",
-        "timeout" : 60
+    "althub" : {
+        "url" : "https://api.althub.co.za",
+        "api_param" : "apikey"
+    },
+    "scenenzbs" :{
+        "url" : "https://scenenzbs.com",
+        "api_param": "apikey"
+    },
+    "nzbfinder" : {
+        "url" : "https://nzbfinder.ws",
+        "api_param" : "apikey"
+    },
+    "drunkenslug" : {
+        "url" : "https://drunkenslug.com",
+        "api_param" : "apikey"
+    }, 
+    "nzbplanet" : {
+        "url" : "http://api.nzbplanet.net",
+        "api_param" : "apikey"
+    },
+    "digitalcarnage" : {
+        "url" : "https://digitalcarnage.info",
+        "api_param" : "apikey"
+    },
+    "dognzb" :{
+        "url" : "https://api.dognzb.cr",
+        "api_param" : "apikey" 
+    },
+    "squareeyed" : {
+        "url" : " https://squareeyed.org",
+        "api_param" : "apikey" 
     }
 }
