@@ -4,7 +4,7 @@ FROM golang:1.20 as builder
 WORKDIR /app
 
 # Copy go.mod and go.sum first for caching
-COPY ./proxy-golang/src/go.mod src/go.sum ./
+COPY ./proxy-golang/src/go.mod ./proxy-golang/src/go.sum ./
 RUN go mod download
 
 # Copy the actual source
