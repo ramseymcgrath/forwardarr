@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM golang:1.20 as builder
+FROM golang:1.24 as builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ COPY ./proxy-golang/src/main.go ./main.go
 # Build the binary
 RUN CGO_ENABLED=0 go build -o proxyserver .
 # Stage 2: Minimal runtime image
-FROM alpine:3.18
+FROM alpine:3.21
 RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
