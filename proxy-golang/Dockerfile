@@ -13,7 +13,7 @@ COPY ./proxy-golang/src/main.go ./main.go
 # Build the binary
 RUN CGO_ENABLED=0 go build -o proxyserver .
 # Stage 2: Minimal runtime image
-FROM alpine:3.21
+FROM alpine:3.22
 RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
